@@ -57,7 +57,7 @@ def calculate_var(df, nfo_strike, bfo_strike, allocation):
                 df_bfo[colname] = np.where(
                     netpos_pos_bfo & ~is_ce_bfo, (strike_bfo - calc_bfo) * qty_bfo,
                     np.where(netpos_neg_bfo & is_ce_bfo, abs(df_bfo["Sell Avg Price"] * qty_bfo),
-                    np.where(netpos_neg_bfo & ~is_ce_nfo, (calc_bfo - strike_bfo) * abs(qty_bfo), 0))
+                    np.where(netpos_neg_bfo & ~is_ce_bfo, (calc_bfo - strike_bfo) * abs(qty_bfo), 0))
                 )
             sum_var = df_bfo[colname].sum()
             perc_var = sum_var / allocation if allocation != 0 else 0
@@ -67,10 +67,6 @@ def calculate_var(df, nfo_strike, bfo_strike, allocation):
     return nfo_results, bfo_results, df_nfo, df_bfo
 
 def run():
-    # if st.button("🔙 Back to Dashboard", key="back_dashboard"):
-    #     st.session_state.current_page = 'dashboard'
-    #     st.rerun()
-
     st.markdown("""
         <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
         <style>
@@ -265,7 +261,7 @@ def run():
     st.markdown('<h1 class="header fade-in">VaR Calculator Pro</h1>', unsafe_allow_html=True)
     st.markdown('<p class="subheader fade-in">Interactive dashboard for Nifty and Sensex VaR analysis. View metrics and download detailed data.</p>', unsafe_allow_html=True)
     st.markdown('<div class="centered-image fade-in">', unsafe_allow_html=True)
-    st.image("https://img.icons8.com/fluency/96/000000/calculator.png", width=96, use_column_width=False)
+    st.image("https://img.icons8.com/fluency/96/000000/calculator.png", width=96, use_container_width=False)
     st.markdown('</div>', unsafe_allow_html=True)
     
     st.markdown('<p class="subheader fade-in">Upload positions CSV and set parameters to compute Value at Risk (VaR).</p>', unsafe_allow_html=True)
@@ -365,7 +361,6 @@ def run():
             Powered by Streamlit | Optimized for Financial Risk Analysis | Developed by Sahil
         </div>
     """, unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     run()
