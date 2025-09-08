@@ -11,6 +11,14 @@ import jainam
 import usersetting_compare
 import algo19  # Placeholder for the new Algo19 module
 
+# Page configuration for consistent layout across environments
+st.set_page_config(
+    page_title="Dashboard",
+    page_icon="📊",
+    layout="centered",
+    initial_sidebar_state="expanded"
+)
+
 # --- Card and Module Definitions ---
 CARDS = {
     'HEDGE AUTOMATION': {
@@ -71,7 +79,7 @@ def get_avatar(name):
         '''
     return '<div class="avatar-placeholder">👤</div>'
 
-# --- Enhanced CSS styles with centralization and symmetry ---
+# --- Enhanced CSS styles with centralization and symmetry (adjusted for better consistency) ---
 CSS = """
 <style>
 :root {
@@ -144,10 +152,32 @@ body {
         padding: 1rem 2rem;
         font-size: 1.2rem;
         transition: transform var(--transition), filter var(--transition);
+        width: 100%;
+        max-width: 600px;
+        margin: 0.8rem auto;
+        display: block;
     }
     .stButton > button:hover {
         transform: scale(1.05);
         filter: brightness(1.2);
+    }
+    .sidebar-nav-btn {
+        background: linear-gradient(135deg, var(--accent1) 0%, var(--dash-pink) 100%);
+        color: white;
+        font-weight: 600;
+        border-radius: var(--border-radius);
+        padding: 1rem;
+        margin: 0.5rem 0;
+        width: 100%;
+        border: none;
+        transition: transform var(--transition), box-shadow var(--transition);
+    }
+    .sidebar-nav-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(109,40,217,0.4);
+    }
+    .user-nav-btn {
+        background: linear-gradient(135deg, var(--accent2) 0%, var(--dash-yellow) 100%);
     }
     .logout-btn {
         color: #DDA0DD;
@@ -205,10 +235,32 @@ body {
         font-size: 1.2rem;
         font-weight: 700;
         color: white;
+        width: 100%;
+        max-width: 600px;
+        margin: 0.8rem auto;
+        display: block;
     }
     .stButton > button:hover {
         transform: scale(1.05);
         filter: brightness(1.1);
+    }
+    .sidebar-nav-btn {
+        background: linear-gradient(135deg, var(--accent1) 0%, var(--dash-pink) 100%);
+        color: white;
+        font-weight: 600;
+        border-radius: var(--border-radius);
+        padding: 1rem;
+        margin: 0.5rem 0;
+        width: 100%;
+        border: none;
+        transition: transform var(--transition), box-shadow var(--transition);
+    }
+    .sidebar-nav-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(109,40,217,0.3);
+    }
+    .user-nav-btn {
+        background: linear-gradient(135deg, var(--accent2) 0%, var(--dash-yellow) 100%);
     }
     .logout-btn {
         color: #4C1D95;
@@ -220,7 +272,7 @@ body {
     }
 }
 .container {
-    max-width: 500px;
+    max-width: 600px;
     margin: 3rem auto;
     border-radius: var(--border-radius);
     padding: 2rem 2.5rem 3rem;
@@ -263,7 +315,7 @@ input[type=text], input[type=password] {
     border-radius: var(--border-radius);
     margin-bottom: 1.2rem;
     width: 100%;
-    max-width: 400px;
+    max-width: 600px;
     margin-left: auto;
     margin-right: auto;
     display: block;
@@ -273,9 +325,8 @@ input[type=text], input[type=password] {
     padding: 0.8rem 1.2rem;
     font-size: 1.1rem;
     width: 100%;
-    max-width: 400px;
-    margin-left: auto;
-    margin-right: auto;
+    max-width: 600px;
+    margin: 0.8rem auto;
     display: block;
 }
 .form-error {
@@ -410,35 +461,21 @@ def login_page():
                 st.session_state.current_page = 'dashboard'
                 st.rerun()
 
-# --- Render Sidebar Cards for Admin Role ---
+# --- Render Sidebar Cards for Admin Role (using native Streamlit buttons for consistency) ---
 def render_admin_sidebar_cards():
+    st.markdown("### Navigation")
     for card_name, card in CARDS.items():
         if 'Admin' in card['roles']:
-            st.markdown(
-                f"""
-                <div class="sidebar-card admin">
-                    <span class="text-3xl mb-2">{card['icon']}</span>
-                    <h3 class="text-lg font-semibold">{card_name}</h3>
-                    <p class="text-sm">{card['description']}</p>
-                </div>
-                """, unsafe_allow_html=True)
-            if st.button("Open", key=f"open_admin_{card_name.replace(' ', '_')}", type='primary', use_container_width=True):
+            if st.button(f"{card['icon']} {card_name}", key=f"open_admin_{card_name.replace(' ', '_')}", help=card['description']):
                 st.session_state.current_page = MODULES[card_name]
                 st.rerun()
 
-# --- Render Sidebar Cards for User Role ---
+# --- Render Sidebar Cards for User Role (using native Streamlit buttons for consistency) ---
 def render_user_sidebar_cards():
+    st.markdown("### Navigation")
     for card_name, card in CARDS.items():
         if 'User' in card['roles']:
-            st.markdown(
-                f"""
-                <div class="sidebar-card user">
-                    <span class="text-3xl mb-2">{card['icon']}</span>
-                    <h3 class="text-lg font-semibold">{card_name}</h3>
-                    <p class="text-sm">{card['description']}</p>
-                </div>
-                """, unsafe_allow_html=True)
-            if st.button("Open", key=f"open_{card_name.replace(' ', '_')}", type='primary', use_container_width=True):
+            if st.button(f"{card['icon']} {card_name}", key=f"open_user_{card_name.replace(' ', '_')}", help=card['description']):
                 st.session_state.current_page = MODULES[card_name]
                 st.rerun()
 
@@ -456,13 +493,23 @@ def user_dashboard():
     if st.session_state.current_page == 'dashboard':
         st.subheader("Your Activity Trend User")
     elif st.session_state.current_page == 'hedge_automation':
-        hedge_automation.run()
+        try:
+            hedge_automation.run()
+        except Exception as e:
+            st.error(f"Error in Hedge Automation: {e}")
     elif st.session_state.current_page == 'varpro':
-        varpro.run()
+        try:
+            varpro.run()
+        except Exception as e:
+            st.error(f"Error in VAR Pro: {e}")
     elif st.session_state.current_page == 'summary_automation':
-        Summary_Automation.run()
+        try:
+            Summary_Automation.run()
+        except Exception as e:
+            st.error(f"Error in Summary Automation: {e}")
     elif st.session_state.current_page == 'strategy_automation':
         # strategy_automation.run()
+        st.info("Strategy Automation module is under development.")
         pass
 
     st.markdown('</div>', unsafe_allow_html=True)
@@ -481,20 +528,39 @@ def admin_dashboard():
     if st.session_state.current_page == 'dashboard':
         st.subheader("Your Activity Trend Admin")
     elif st.session_state.current_page == 'hedge_automation':
-        hedge_automation.run()
+        try:
+            hedge_automation.run()
+        except Exception as e:
+            st.error(f"Error in Hedge Automation: {e}")
     elif st.session_state.current_page == 'varpro':
-        varpro.run()
+        try:
+            varpro.run()
+        except Exception as e:
+            st.error(f"Error in VAR Pro: {e}")
     elif st.session_state.current_page == 'summary_automation':
-        Summary_Automation.run()
+        try:
+            Summary_Automation.run()
+        except Exception as e:
+            st.error(f"Error in Summary Automation: {e}")
     elif st.session_state.current_page == 'strategy_automation':
         # strategy_automation.run()
+        st.info("Strategy Automation module is under development.")
         pass
     elif st.session_state.current_page == 'jainam':
-        jainam.run()
+        try:
+            jainam.run()
+        except Exception as e:
+            st.error(f"Error in Jainam: {e}")
     elif st.session_state.current_page == 'usersetting':
-        usersetting_compare.run()
+        try:
+            usersetting_compare.run()
+        except Exception as e:
+            st.error(f"Error in User Settings: {e}")
     elif st.session_state.current_page == 'algo19':
-        algo19.run()
+        try:
+            algo19.run()
+        except Exception as e:
+            st.error(f"Error in Algo19: {e}")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -513,7 +579,7 @@ else:
         elif st.session_state.role == 'admin':
             render_admin_sidebar_cards()
 
-        if st.button("Logout", key='logout_button', type='secondary'):
+        if st.button("Logout", key='logout_button'):
             st.session_state.logged_in = False
             st.session_state.user_name = ''
             st.session_state.role = 'user'
