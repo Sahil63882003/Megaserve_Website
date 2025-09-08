@@ -79,7 +79,7 @@ def get_avatar(name):
         '''
     return '<div class="avatar-placeholder">👤</div>'
 
-# --- Enhanced CSS styles with centralization and symmetry (adjusted for better consistency) ---
+# --- Enhanced CSS styles with centralization and symmetry (adjusted for consistent sidebar card sizes) ---
 CSS = """
 <style>
 :root {
@@ -99,6 +99,8 @@ CSS = """
     --shadow-dark: 0 14px 36px rgba(0,0,0,0.2);
     --bg-gradient-light: linear-gradient(135deg, #F3F4F6, #FFFFFF);
     --bg-gradient-dark: linear-gradient(135deg, #4C1D95, #831843 70%, #92400E 100%);
+    --sidebar-button-width: 100%;
+    --sidebar-button-height: 48px;
 }
 body {
     font-family: var(--font-family);
@@ -161,30 +163,45 @@ body {
         transform: scale(1.05);
         filter: brightness(1.2);
     }
-    .sidebar-nav-btn {
+    .sidebar-nav-btn, .stSidebar .stButton > button {
         background: linear-gradient(135deg, var(--accent1) 0%, var(--dash-pink) 100%);
         color: white;
         font-weight: 600;
         border-radius: var(--border-radius);
-        padding: 1rem;
+        padding: 0.8rem;
         margin: 0.5rem 0;
-        width: 100%;
+        width: var(--sidebar-button-width);
+        height: var(--sidebar-button-height);
         border: none;
         transition: transform var(--transition), box-shadow var(--transition);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        box-sizing: border-box;
     }
-    .sidebar-nav-btn:hover {
+    .sidebar-nav-btn:hover, .stSidebar .stButton > button:hover {
         transform: translateY(-2px);
         box-shadow: 0 8px 20px rgba(109,40,217,0.4);
     }
     .user-nav-btn {
         background: linear-gradient(135deg, var(--accent2) 0%, var(--dash-yellow) 100%);
     }
-    .logout-btn {
+    .logout-btn, .stSidebar .stButton > button[key="logout_button"] {
         color: #DDA0DD;
         text-decoration: underline;
+        background: none;
+        box-shadow: none;
+        width: var(--sidebar-button-width);
+        height: var(--sidebar-button-height);
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
-    .logout-btn:hover {
+    .logout-btn:hover, .stSidebar .stButton > button[key="logout_button"]:hover {
         color: #FF69B4;
+        transform: translateY(-2px);
     }
 }
 @media (prefers-color-scheme: light) {
@@ -244,30 +261,44 @@ body {
         transform: scale(1.05);
         filter: brightness(1.1);
     }
-    .sidebar-nav-btn {
+    .sidebar-nav-btn, .stSidebar .stButton > button {
         background: linear-gradient(135deg, var(--accent1) 0%, var(--dash-pink) 100%);
         color: white;
         font-weight: 600;
         border-radius: var(--border-radius);
-        padding: 1rem;
+        padding: 0.8rem;
         margin: 0.5rem 0;
-        width: 100%;
+        width: var(--sidebar-button-width);
+        height: var(--sidebar-button-height);
         border: none;
         transition: transform var(--transition), box-shadow var(--transition);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        box-sizing: border-box;
     }
-    .sidebar-nav-btn:hover {
+    .sidebar-nav-btn:hover, .stSidebar .stButton > button:hover {
         transform: translateY(-2px);
         box-shadow: 0 6px 16px rgba(109,40,217,0.3);
     }
     .user-nav-btn {
         background: linear-gradient(135deg, var(--accent2) 0%, var(--dash-yellow) 100%);
     }
-    .logout-btn {
+    .logout-btn, .stSidebar .stButton > button[key="logout_button"] {
         color: #4C1D95;
         font-weight: 700;
         text-decoration: underline;
+        background: none;
+        box-shadow: none;
+        width: var(--sidebar-button-width);
+        height: var(--sidebar-button-height);
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
-    .logout-btn:hover {
+    .logout-btn:hover, .stSidebar .stButton > button[key="logout_button"]:hover {
         color: #7C3AED;
     }
 }
@@ -578,6 +609,10 @@ else:
             render_user_sidebar_cards()
         elif st.session_state.role == 'admin':
             render_admin_sidebar_cards()
+
+        if st.button("🔙 Back to Dashboard", key="back_dashboard"):
+            st.session_state.current_page = 'dashboard'
+            st.rerun()
 
         if st.button("Logout", key='logout_button'):
             st.session_state.logged_in = False
