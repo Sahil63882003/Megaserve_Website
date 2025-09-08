@@ -8,9 +8,9 @@ import threading
 import streamlit as st
 
 def run():
-    if st.button("🔙 Back to Dashboard", key="back_dashboard"):
-        st.session_state.current_page = 'dashboard'
-        st.rerun()
+    # if st.button("🔙 Back to Dashboard", key="back_dashboard"):
+    #     st.session_state.current_page = 'dashboard'
+    #     st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
     # Replace with original Summary_Automation.py code (excluding st.set_page_config)
     st.title("Summary Automation")
