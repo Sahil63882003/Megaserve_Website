@@ -401,9 +401,9 @@ def render_modified_with_filters(modified_df: pd.DataFrame):
         )
 
 def run():
-    if st.button("🔙 Back to Dashboard", key="back_dashboard"):
-        st.session_state.current_page = 'dashboard'
-        st.rerun()
+    # if st.button("🔙 Back to Dashboard", key="back_dashboard"):
+    #     st.session_state.current_page = 'dashboard'
+    #     st.rerun()
     # Apply theme-based CSS with system preference detection
     st.markdown("""
         <style>
