@@ -12,9 +12,9 @@ import hashlib
 def run():
     # Display Back to Dashboard button at the top of the main screen
     st.markdown('<div class="button-container">', unsafe_allow_html=True)
-    if st.button("🔙 Back to Dashboard", key="back_dashboard"):
-        st.session_state.current_page = 'dashboard'
-        st.rerun()
+    # if st.button("🔙 Back to Dashboard", key="back_dashboard"):
+    #     st.session_state.current_page = 'dashboard'
+    #     st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
     main()
 
