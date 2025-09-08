@@ -11,9 +11,9 @@ from datetime import datetime
 
 def run():
     # Back to Dashboard button
-    if st.button("🔙 Back to Dashboard", key="back_dashboard"):
-        st.session_state.current_page = "dashboard"
-        st.rerun()
+    # if st.button("🔙 Back to Dashboard", key="back_dashboard"):
+    #     st.session_state.current_page = "dashboard"
+    #     st.rerun()
 
     # Main title and description
     st.markdown("# Realized PNL for 19")
