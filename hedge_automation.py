@@ -203,9 +203,9 @@ def export_orderbook_with_formulas(df: pd.DataFrame, user_ids: list[str], mtm_im
     return wb, stats
 
 def run():
-    if st.button("🔙 Back to Dashboard", key="back_dashboard"):
-        st.session_state.current_page = 'dashboard'
-        st.rerun()
+    # if st.button("🔙 Back to Dashboard", key="back_dashboard"):
+    #     st.session_state.current_page = 'dashboard'
+    #     st.rerun()
     # Fallback session state initialization
     if 'user_ids' not in st.session_state:
         st.session_state.user_ids = []
