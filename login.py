@@ -6,7 +6,6 @@ import altair as alt
 import varpro 
 import hedge_automation
 import Summary_Automation
-# import strategy_automation
 import jainam
 import usersetting_compare
 import algo19  # Placeholder for the new Algo19 module
@@ -62,7 +61,6 @@ MODULES = {
     'HEDGE AUTOMATION': 'hedge_automation',
     'VAR PRO': 'varpro',
     'SUMMARY AUTOMATION': 'summary_automation',
-    'STRATEGY AUTOMATION': 'strategy_automation',
     'JAINAM': 'jainam',
     'USERSETTING': 'usersetting',
     'ALGO19 REALIZED AND UNREALIZED': 'algo19'
@@ -79,7 +77,7 @@ def get_avatar(name):
         '''
     return '<div class="avatar-placeholder">👤</div>'
 
-# --- Enhanced CSS styles with centralization and symmetry (adjusted for consistent sidebar card sizes) ---
+# --- Enhanced CSS styles with centralization and symmetry ---
 CSS = """
 <style>
 :root {
@@ -179,6 +177,7 @@ body {
         justify-content: center;
         font-size: 1rem;
         box-sizing: border-box;
+        text-decoration: none;
     }
     .sidebar-nav-btn:hover, .stSidebar .stButton > button:hover {
         transform: translateY(-2px);
@@ -277,6 +276,7 @@ body {
         justify-content: center;
         font-size: 1rem;
         box-sizing: border-box;
+        text-decoration: none;
     }
     .sidebar-nav-btn:hover, .stSidebar .stButton > button:hover {
         transform: translateY(-2px);
@@ -492,23 +492,45 @@ def login_page():
                 st.session_state.current_page = 'dashboard'
                 st.rerun()
 
-# --- Render Sidebar Cards for Admin Role (using native Streamlit buttons for consistency) ---
+# --- Render Sidebar Cards for Admin Role ---
 def render_admin_sidebar_cards():
     st.markdown("### Navigation")
     for card_name, card in CARDS.items():
         if 'Admin' in card['roles']:
-            if st.button(f"{card['icon']} {card_name}", key=f"open_admin_{card_name.replace(' ', '_')}", help=card['description']):
-                st.session_state.current_page = MODULES[card_name]
-                st.rerun()
+            if card_name == 'STRATEGY AUTOMATION':
+                # Use an <a> tag styled as a button to open the link in a new tab
+                st.markdown(
+                    f"""
+                    <a href="https://strategiesautomationbysahil.streamlit.app/" target="_blank" class="sidebar-nav-btn" style="width: 100%; height: 48px; margin: 0.5rem 0; display: flex; align-items: center; justify-content: center;">
+                        {card['icon']} {card_name}
+                    </a>
+                    """,
+                    unsafe_allow_html=True
+                )
+            else:
+                if st.button(f"{card['icon']} {card_name}", key=f"open_admin_{card_name.replace(' ', '_')}", help=card['description']):
+                    st.session_state.current_page = MODULES[card_name]
+                    st.rerun()
 
-# --- Render Sidebar Cards for User Role (using native Streamlit buttons for consistency) ---
+# --- Render Sidebar Cards for User Role ---
 def render_user_sidebar_cards():
     st.markdown("### Navigation")
     for card_name, card in CARDS.items():
         if 'User' in card['roles']:
-            if st.button(f"{card['icon']} {card_name}", key=f"open_user_{card_name.replace(' ', '_')}", help=card['description']):
-                st.session_state.current_page = MODULES[card_name]
-                st.rerun()
+            if card_name == 'STRATEGY AUTOMATION':
+                # Use an <a> tag styled as a button to open the link in a new tab
+                st.markdown(
+                    f"""
+                    <a href="https://strategiesautomationbysahil.streamlit.app/" target="_blank" class="sidebar-nav-btn user-nav-btn" style="width: 100%; height: 48px; margin: 0.5rem 0; display: flex; align-items: center; justify-content: center;">
+                        {card['icon']} {card_name}
+                    </a>
+                    """,
+                    unsafe_allow_html=True
+                )
+            else:
+                if st.button(f"{card['icon']} {card_name}", key=f"open_user_{card_name.replace(' ', '_')}", help=card['description']):
+                    st.session_state.current_page = MODULES[card_name]
+                    st.rerun()
 
 # --- User Dashboard Pages ---
 def user_dashboard():
@@ -538,10 +560,6 @@ def user_dashboard():
             Summary_Automation.run()
         except Exception as e:
             st.error(f"Error in Summary Automation: {e}")
-    elif st.session_state.current_page == 'strategy_automation':
-        # strategy_automation.run()
-        st.info("Strategy Automation module is under development.")
-        pass
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -573,10 +591,6 @@ def admin_dashboard():
             Summary_Automation.run()
         except Exception as e:
             st.error(f"Error in Summary Automation: {e}")
-    elif st.session_state.current_page == 'strategy_automation':
-        # strategy_automation.run()
-        st.info("Strategy Automation module is under development.")
-        pass
     elif st.session_state.current_page == 'jainam':
         try:
             jainam.run()
