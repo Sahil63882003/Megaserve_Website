@@ -85,7 +85,7 @@ def run():
             --shadow-dark: rgba(0, 0, 0, 0.4);
             --positive-color: #10B981;
             --negative-color: #EF4444;
-            --header-gradient: linear-gradient(90deg, #3B82F6, #A855F7);
+            --header-gradient: linear-gradient(90deg, #3B82F6, #A855F7, #EC4899);
             --blur: blur(10px);
         }
         .varpro-container {
@@ -145,7 +145,7 @@ def run():
             height: 400px;
         }
         .varpro-container .stButton > button:hover {
-            background: var(--accent-hover);
+            background: linear-gradient(90deg, #2563EB, #9333EA, #DB2777);
             transform: translateY(-2px);
             box-shadow: 0 8px 16px var(--shadow-light);
         }
@@ -167,6 +167,7 @@ def run():
         .varpro-container .metric-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 8px 16px var(--shadow-light);
+            border-color: var(--accent);
         }
         .dark-mode .varpro-container .metric-card {
             background: var(--card-bg-dark);
@@ -230,7 +231,7 @@ def run():
             height: 300px;
         }
         .varpro-container .download-button:hover {
-            background: var(--accent-hover);
+            background: linear-gradient(90deg, #2563EB, #9333EA, #DB2777);
             transform: translateY(-2px);
         }
         .varpro-container .stFileUploader > div > div > input,
@@ -263,8 +264,6 @@ def run():
             border: 2px solid var(--border-accent);
             background: var(--card-bg-dark);
             color: var(--text-dark);
-           ու
-
             box-shadow: 0 4px 8px var(--shadow-dark);
         }
         .varpro-container .input-container {
@@ -454,6 +453,11 @@ def run():
         @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes glow {
+            0% { box-shadow: 0 0 5px var(--accent); }
+            50% { box-shadow: 0 0 20px var(--accent); }
+            100% { box-shadow: 0 0 5px var(--accent); }
         }
         </style>
         <script>
@@ -684,7 +688,7 @@ def run():
                 st.markdown('<h3 class="text-xl font-semibold mt-12 mb-6 slide-in">Download Recalculated Data</h3>', unsafe_allow_html=True)
                 st.download_button(
                     label=f"Download Recal {'NFO' if index_selected == 'NFO' else 'BFO'} CSV",
-                    data=st.session_state['df_nfo_recal'].to_csv(index=False) if index_selected == 'NFO' else st.session_state['df_bfo_recal'].to_csv(index=False),
+                    data=st.session_state['df_nfo_recal'].to_csv(index=False) if index_selected == "NFO" else st.session_state['df_bfo_recal'].to_csv(index=False),
                     file_name=f"{'nfo' if index_selected == 'NFO' else 'bfo'}_recal_processed.csv",
                     mime="text/csv",
                     help="Download the recalculated data.",
