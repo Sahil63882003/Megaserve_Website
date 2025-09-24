@@ -591,6 +591,16 @@ def process_files(file1, file2, file3, sheet_name, date_input):
             logger.error(error_msg)
             raise
 
+        # Select only the required columns to avoid extra columns with NaN
+        try:
+            logger.info("Selecting required columns")
+            required_columns = ['User ID', 'Component', 'Capital Deployed', 'MTM', '|', 'User ID (SL)', 'Component (SL)', 'Max Loss']
+            capital_deployed_df = capital_deployed_df[required_columns]
+        except Exception as e:
+            error_msg = f"Error selecting required columns: {str(e)}"
+            logger.error(error_msg)
+            raise
+
         # Clean NaN values for JSON compatibility
         try:
             logger.info("Cleaning NaN values in capital_deployed_df for JSON compatibility")
