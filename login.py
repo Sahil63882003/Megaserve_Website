@@ -8,8 +8,9 @@ import hedge_automation
 import Summary_Automation
 import jainam
 import usersetting_compare
-import algo19  # Placeholder for the Algo19 module
-import algo8  # Import the Algo 8 Calculator module
+import algo19
+import algo8
+import hedge  # Import the Hedge Manager module
 
 # Page configuration for consistent layout across environments
 st.set_page_config(
@@ -60,6 +61,11 @@ CARDS = {
         'description': 'Calculate PNL for NIFTY/SENSEX options with Algo 8.',
         'roles': ['Admin'],
         'icon': '🧮'
+    },
+    'HEDGE MANAGER': {
+        'description': 'Manage hedge operations.',
+        'roles': ['Admin', 'User'],
+        'icon': '🛡️'
     }
 }
 
@@ -70,7 +76,8 @@ MODULES = {
     'JAINAM': 'jainam',
     'USERSETTING': 'usersetting',
     'ALGO19 REALIZED AND UNREALIZED': 'algo19',
-    'ALGO 8 CALCULATOR': 'algo8'
+    'ALGO 8 CALCULATOR': 'algo8',
+    'HEDGE MANAGER': 'hedge'
 }
 
 # --- Utility functions ---
@@ -105,7 +112,7 @@ CSS = """
     --bg-gradient-light: linear-gradient(135deg, #F3F4F6, #FFFFFF);
     --bg-gradient-dark: linear-gradient(135deg, #4C1D95, #831843 70%, #92400E 100%);
     --sidebar-button-width: 100%;
-    --sidebar-button-height: 48px;
+    --sidebar-button-height: 56px;
 }
 body {
     font-family: var(--font-family);
@@ -156,12 +163,12 @@ body {
         color: white;
         font-weight: 700;
         border-radius: var(--border-radius);
-        padding: 1rem 2rem;
-        font-size: 1.2rem;
+        padding: 1.2rem 2.5rem;
+        font-size: 1.3rem;
         transition: transform var(--transition), filter var(--transition);
         width: 100%;
         max-width: 600px;
-        margin: 0.8rem auto;
+        margin: 1rem auto;
         display: block;
     }
     .stButton > button:hover {
@@ -173,8 +180,8 @@ body {
         color: white;
         font-weight: 600;
         border-radius: var(--border-radius);
-        padding: 0.8rem;
-        margin: 0.5rem 0;
+        padding: 1rem;
+        margin: 0.6rem 0;
         width: var(--sidebar-button-width);
         height: var(--sidebar-button-height);
         border: none;
@@ -182,7 +189,7 @@ body {
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1rem;
+        font-size: 1.1rem;
         box-sizing: border-box;
         text-decoration: none;
     }
@@ -191,7 +198,7 @@ body {
         box-shadow: 0 8px 20px rgba(109,40,217,0.4);
     }
     .user-nav-btn {
-        background: linear-gradient(135deg, var(--accent2) 0%, var(--dash-yellow) 100%);
+        background: linear-gradient(135deg, var(--accent2) 0%, #EAB308 100%);
     }
     .logout-btn, .stSidebar .stButton > button[key="logout_button"] {
         color: #DDA0DD;
@@ -200,7 +207,7 @@ body {
         box-shadow: none;
         width: var(--sidebar-button-width);
         height: var(--sidebar-button-height);
-        font-size: 1rem;
+        font-size: 1.1rem;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -225,8 +232,8 @@ body {
         color: #1F2937;
         border: 1px solid #D1D5DB;
         border-radius: var(--border-radius);
-        padding: 0.8rem 1.2rem;
-        font-size: 1.1rem;
+        padding: 1rem 1.5rem;
+        font-size: 1.2rem;
     }
     input:focus, select:focus {
         border-color: var(--accent1);
@@ -243,7 +250,7 @@ body {
         box-shadow: var(--shadow-light);
         border: 1px solid #E0E7FF;
         border-radius: var(--border-radius);
-        padding: 2rem 1.8rem;
+        padding: 2.5rem 2rem;
         transition: transform var(--transition), box-shadow var(--transition);
     }
     .card:hover, .sidebar-card:hover {
@@ -254,13 +261,13 @@ body {
         background-image: var(--admin-accent);
         box-shadow: 0 6px 28px rgba(109,40,217,0.4);
         border-radius: var(--border-radius);
-        padding: 1rem 2rem;
-        font-size: 1.2rem;
+        padding: 1.2rem 2.5rem;
+        font-size: 1.3rem;
         font-weight: 700;
         color: white;
         width: 100%;
         max-width: 600px;
-        margin: 0.8rem auto;
+        margin: 1rem auto;
         display: block;
     }
     .stButton > button:hover {
@@ -272,8 +279,8 @@ body {
         color: white;
         font-weight: 600;
         border-radius: var(--border-radius);
-        padding: 0.8rem;
-        margin: 0.5rem 0;
+        padding: 1rem;
+        margin: 0.6rem 0;
         width: var(--sidebar-button-width);
         height: var(--sidebar-button-height);
         border: none;
@@ -281,7 +288,7 @@ body {
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1rem;
+        font-size: 1.1rem;
         box-sizing: border-box;
         text-decoration: none;
     }
@@ -290,7 +297,7 @@ body {
         box-shadow: 0 6px 16px rgba(109,40,217,0.3);
     }
     .user-nav-btn {
-        background: linear-gradient(135deg, var(--accent2) 0%, var(--dash-yellow) 100%);
+        background: linear-gradient(135deg, var(--accent2) 0%, #EAB308 100%);
     }
     .logout-btn, .stSidebar .stButton > button[key="logout_button"] {
         color: #4C1D95;
@@ -300,7 +307,7 @@ body {
         box-shadow: none;
         width: var(--sidebar-button-width);
         height: var(--sidebar-button-height);
-        font-size: 1rem;
+        font-size: 1.1rem;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -311,18 +318,18 @@ body {
 }
 .container {
     max-width: 600px;
-    margin: 3rem auto;
+    margin: 4rem auto;
     border-radius: var(--border-radius);
-    padding: 2rem 2.5rem 3rem;
+    padding: 3rem 2.5rem;
     text-align: center;
 }
 .avatar {
     display: inline-flex;
-    width: 80px;
-    height: 80px;
-    margin: 0 auto 2rem;
+    width: 90px;
+    height: 90px;
+    margin: 0 auto 2.5rem;
     border-radius: 50%;
-    font-size: 2.8rem;
+    font-size: 3rem;
     font-weight: 800;
     color: #fff;
     background: var(--admin-accent);
@@ -336,22 +343,22 @@ body {
     box-shadow: 0 10px 24px rgba(109,40,217,0.9);
 }
 .avatar-placeholder {
-    font-size: 52px;
+    font-size: 60px;
     color: #9CA3AF;
-    margin-bottom: 2rem;
+    margin-bottom: 2.5rem;
 }
 h2 {
-    margin-bottom: 1rem;
-    font-size: 2.2rem;
+    margin-bottom: 1.2rem;
+    font-size: 2.4rem;
 }
 h3 {
-    margin-bottom: 0.8rem;
-    font-size: 1.4rem;
+    margin-bottom: 1rem;
+    font-size: 1.6rem;
     letter-spacing: 1px;
 }
 input[type=text], input[type=password] {
     border-radius: var(--border-radius);
-    margin-bottom: 1.2rem;
+    margin-bottom: 1.5rem;
     width: 100%;
     max-width: 600px;
     margin-left: auto;
@@ -360,18 +367,18 @@ input[type=text], input[type=password] {
 }
 .stSelectbox > div > div > select {
     border-radius: var(--border-radius);
-    padding: 0.8rem 1.2rem;
-    font-size: 1.1rem;
+    padding: 1rem 1.5rem;
+    font-size: 1.2rem;
     width: 100%;
     max-width: 600px;
-    margin: 0.8rem auto;
+    margin: 1rem auto;
     display: block;
 }
 .form-error {
     background: var(--error-bg);
     color: #B91C1C;
-    padding: 0.8rem 1.2rem;
-    margin-bottom: 1.5rem;
+    padding: 1rem 1.5rem;
+    margin-bottom: 2rem;
     border-radius: var(--border-radius);
     font-weight: 600;
     box-shadow: 0 0 8px #FCA5A5;
@@ -380,27 +387,27 @@ input[type=text], input[type=password] {
     margin-right: auto;
 }
 .dash-container {
-    max-width: 800px;
-    margin: 2rem auto;
-    padding: 0 1.5rem;
+    max-width: 900px;
+    margin: 3rem auto;
+    padding: 0 2rem;
     text-align: center;
 }
 .dash-header {
     text-align: center;
-    margin-bottom: 2rem;
+    margin-bottom: 2.5rem;
 }
 .dash-metrics {
     display: flex;
     justify-content: center;
     flex-wrap: wrap;
-    margin-bottom: 2rem;
-    gap: 1rem;
+    margin-bottom: 2.5rem;
+    gap: 1.2rem;
 }
 .dash-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 2.5rem;
-    margin-top: 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 3rem;
+    margin-top: 2.5rem;
     justify-items: center;
 }
 .card {
@@ -430,15 +437,15 @@ input[type=text], input[type=password] {
 }
 .stExpander {
     width: 100%;
-    max-width: 800px;
+    max-width: 900px;
     margin: 0 auto;
 }
 .sidebar-card {
     width: 100%;
-    max-width: 200px;
-    margin: 1rem auto;
+    max-width: 220px;
+    margin: 1.2rem auto;
     border-radius: var(--border-radius);
-    padding: 1rem;
+    padding: 1.5rem;
     cursor: pointer;
     transition: transform var(--transition), box-shadow var(--transition);
 }
@@ -458,7 +465,7 @@ if 'logged_in' not in st.session_state:
     st.session_state.role = 'user'
     st.session_state.error = ''
 if 'current_page' not in st.session_state:
-    st.session_state.current_page = 'dashboard'  # Default page
+    st.session_state.current_page = 'dashboard'
 
 # --- Login page ---
 def login_page():
@@ -505,17 +512,16 @@ def render_admin_sidebar_cards():
     for card_name, card in CARDS.items():
         if 'Admin' in card['roles']:
             if card_name == 'STRATEGY AUTOMATION':
-                # Use an <a> tag styled as a button to open the link in a new tab
                 st.markdown(
                     f"""
-                    <a href="https://strategiesautomationbysahil.streamlit.app/" target="_blank" class="sidebar-nav-btn" style="width: 100%; height: 48px; margin: 0.5rem 0; display: flex; align-items: center; justify-content: center;">
+                    <a href="https://strategiesautomationbysahil.streamlit.app/" target="_blank" class="sidebar-nav-btn" style="width: 100%; height: 56px; margin: 0.6rem 0; display: flex; align-items: center; justify-content: center;">
                         {card['icon']} {card_name}
                     </a>
                     """,
                     unsafe_allow_html=True
                 )
             else:
-                if st.button(f"{card['icon']} {card_name}", key=f"open_admin_{card_name.replace(' ', '_')}", help=card['description']):
+                if st.button(f"{card['icon']} {card_name}", key=f"open_admin_{card_name.replace(' ', '_').lower()}", help=card['description']):
                     st.session_state.current_page = MODULES[card_name]
                     st.rerun()
 
@@ -525,17 +531,16 @@ def render_user_sidebar_cards():
     for card_name, card in CARDS.items():
         if 'User' in card['roles']:
             if card_name == 'STRATEGY AUTOMATION':
-                # Use an <a> tag styled as a button to open the link in a new tab
                 st.markdown(
                     f"""
-                    <a href="https://strategiesautomationbysahil.streamlit.app/" target="_blank" class="sidebar-nav-btn user-nav-btn" style="width: 100%; height: 48px; margin: 0.5rem 0; display: flex; align-items: center; justify-content: center;">
+                    <a href="https://strategiesautomationbysahil.streamlit.app/" target="_blank" class="sidebar-nav-btn user-nav-btn" style="width: 100%; height: 56px; margin: 0.6rem 0; display: flex; align-items: center; justify-content: center;">
                         {card['icon']} {card_name}
                     </a>
                     """,
                     unsafe_allow_html=True
                 )
             else:
-                if st.button(f"{card['icon']} {card_name}", key=f"open_user_{card_name.replace(' ', '_')}", help=card['description']):
+                if st.button(f"{card['icon']} {card_name}", key=f"open_user_{card_name.replace(' ', '_').lower()}", help=card['description']):
                     st.session_state.current_page = MODULES[card_name]
                     st.rerun()
 
@@ -567,6 +572,11 @@ def user_dashboard():
             Summary_Automation.run()
         except Exception as e:
             st.error(f"Error in Summary Automation: {e}")
+    elif st.session_state.current_page == 'hedge':
+        try:
+            hedge.run()
+        except Exception as e:
+            st.error(f"Error in Hedge Manager: {e}")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -618,6 +628,11 @@ def admin_dashboard():
             algo8.run()
         except Exception as e:
             st.error(f"Error in Algo 8 Calculator: {e}")
+    elif st.session_state.current_page == 'hedge':
+        try:
+            hedge.run()
+        except Exception as e:
+            st.error(f"Error in Hedge Manager: {e}")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -636,7 +651,7 @@ else:
         elif st.session_state.role == 'admin':
             render_admin_sidebar_cards()
 
-        if st.button("🔙 Back to Dashboard", key="back_dashboard"):
+        if st.button("🔙 Back to Dashboard", key=f"back_dashboard_{st.session_state.current_page}"):
             st.session_state.current_page = 'dashboard'
             st.rerun()
 
