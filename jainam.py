@@ -601,7 +601,7 @@ def process_files(file1, file2, file3, sheet_name, date_input):
     finally:
         progress_bar.empty()
 
-def main():
+def run():
     try:
         if 'error_logs' not in st.session_state:
             st.session_state['error_logs'] = []
@@ -1137,4 +1137,5 @@ def main():
         st.error(error_msg)
 
 if __name__ == '__main__':
-    main()
+    run()
+
