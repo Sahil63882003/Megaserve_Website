@@ -591,6 +591,29 @@ def process_files(file1, file2, file3, sheet_name, date_input):
             logger.error(error_msg)
             raise
 
+        # Clean NaN values for JSON compatibility
+        try:
+            logger.info("Cleaning NaN values in capital_deployed_df for JSON compatibility")
+            # Log rows with NaN values
+            nan_rows = capital_deployed_df[capital_deployed_df.isna().any(axis=1)]
+            if not nan_rows.empty:
+                logger.warning(f"Rows with NaN values in capital_deployed_df: {nan_rows.to_dict('records')}")
+            # Define column types
+            string_columns = ['User ID', 'Component', 'User ID (SL)', 'Component (SL)', '|']
+            numeric_columns = ['Capital Deployed', 'MTM', 'Max Loss']
+            # Replace NaN in string columns with empty string
+            for col in string_columns:
+                if col in capital_deployed_df.columns:
+                    capital_deployed_df[col] = capital_deployed_df[col].fillna('')
+            # Replace NaN in numeric columns with 0 (already handled, but ensure consistency)
+            for col in numeric_columns:
+                if col in capital_deployed_df.columns:
+                    capital_deployed_df[col] = pd.to_numeric(capital_deployed_df[col], errors='coerce').fillna(0)
+        except Exception as e:
+            error_msg = f"Error cleaning NaN values in capital_deployed_df: {str(e)}"
+            logger.error(error_msg)
+            raise
+
         logger.info(f"Processing completed in {time.time() - start_time:.2f} seconds")
         progress_bar.progress(100)
         return capital_deployed_df
@@ -1104,8 +1127,23 @@ def run():
             try:
                 logger.info("Displaying processed data")
                 st.subheader("Processed Data")
+                # Ensure DataFrame is clean for display
+                display_df = st.session_state.output.copy()
+                # Log any remaining NaN values
+                nan_rows = display_df[display_df.isna().any(axis=1)]
+                if not nan_rows.empty:
+                    logger.warning(f"Rows with NaN values before display: {nan_rows.to_dict('records')}")
+                # Replace NaN in all columns for display
+                string_columns = ['User ID', 'Component', 'User ID (SL)', 'Component (SL)', '|']
+                numeric_columns = ['Capital Deployed', 'MTM', 'Max Loss']
+                for col in string_columns:
+                    if col in display_df.columns:
+                        display_df[col] = display_df[col].fillna('')
+                for col in numeric_columns:
+                    if col in display_df.columns:
+                        display_df[col] = pd.to_numeric(display_df[col], errors='coerce').fillna(0)
                 st.dataframe(
-                    st.session_state.output.style.format({
+                    display_df.style.format({
                         'Capital Deployed': '{:,.2f}',
                         'MTM': '{:,.2f}',
                         'Max Loss': '{:,.2f}'
@@ -1138,4 +1176,3 @@ def run():
 
 if __name__ == '__main__':
     run()
-
