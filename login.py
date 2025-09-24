@@ -8,7 +8,8 @@ import hedge_automation
 import Summary_Automation
 import jainam
 import usersetting_compare
-import algo19  # Placeholder for the new Algo19 module
+import algo19  # Placeholder for the Algo19 module
+import algo8  # Import the Algo 8 Calculator module
 
 # Page configuration for consistent layout across environments
 st.set_page_config(
@@ -54,6 +55,11 @@ CARDS = {
         'description': 'Analyze realized and unrealized gains for Algo19.',
         'roles': ['Admin'],
         'icon': '📊'
+    },
+    'ALGO 8 CALCULATOR': {
+        'description': 'Calculate PNL for NIFTY/SENSEX options with Algo 8.',
+        'roles': ['Admin'],
+        'icon': '🧮'
     }
 }
 
@@ -63,7 +69,8 @@ MODULES = {
     'SUMMARY AUTOMATION': 'summary_automation',
     'JAINAM': 'jainam',
     'USERSETTING': 'usersetting',
-    'ALGO19 REALIZED AND UNREALIZED': 'algo19'
+    'ALGO19 REALIZED AND UNREALIZED': 'algo19',
+    'ALGO 8 CALCULATOR': 'algo8'
 }
 
 # --- Utility functions ---
@@ -606,6 +613,11 @@ def admin_dashboard():
             algo19.run()
         except Exception as e:
             st.error(f"Error in Algo19: {e}")
+    elif st.session_state.current_page == 'algo8':
+        try:
+            algo8.run()
+        except Exception as e:
+            st.error(f"Error in Algo 8 Calculator: {e}")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
