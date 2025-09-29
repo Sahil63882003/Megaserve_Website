@@ -1,514 +1,696 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import re
+from collections import deque
+import io
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import time
 
-def extract_transaction_strike(symbol):
-    match1 = re.search(r'(CE|PE)\s*(\d+)', symbol)
-    if match1:
-        return match1.group(1), match1.group(2)
-    match2 = re.search(r'(\d+)(CE|PE)', symbol)
-    if match2:
-        return match2.group(2), match2.group(1)
-    return None, None
-
-def calculate_var(df, nfo_strike, bfo_strike, allocation):
-    df["Transaction"], df["Strike"] = zip(*df["Symbol"].map(extract_transaction_strike))
-    df["Strike"] = pd.to_numeric(df["Strike"], errors='coerce')
-    df_nfo = df[df["Exchange"] == "NFO"].copy()
-    df_bfo = df[df["Exchange"] == "BFO"].copy()
-    nfo_results = {}
-    if not df_nfo.empty:
-        strike_nfo = df_nfo["Strike"]
-        qty_nfo = df_nfo["Net Qty"]
-        is_ce_nfo = df_nfo["Transaction"] == "CE"
-        netpos_pos_nfo = qty_nfo > 0
-        netpos_neg_nfo = qty_nfo < 0
-        for perc in [10, -10, 15, -15]:
-            calc_nfo = nfo_strike + (nfo_strike * perc / 100)
-            colname = f"calc_{perc}%_VAR"
-            if perc > 0:
-                df_nfo[colname] = np.where(
-                    netpos_pos_nfo & is_ce_nfo, (calc_nfo - strike_nfo) * abs(qty_nfo),
-                    np.where(netpos_neg_nfo & is_ce_nfo, (calc_nfo - strike_nfo) * qty_nfo,
-                    np.where(netpos_neg_nfo & ~is_ce_nfo, abs(df_nfo["Sell Avg Price"] * qty_nfo), 0))
-                )
-            else:
-                df_nfo[colname] = np.where(
-                    netpos_pos_nfo & ~is_ce_nfo, (strike_nfo - calc_nfo) * qty_nfo,
-                    np.where(netpos_neg_nfo & is_ce_nfo, abs(df_nfo["Sell Avg Price"] * qty_nfo),
-                    np.where(netpos_neg_nfo & ~is_ce_nfo, (calc_nfo - strike_nfo) * abs(qty_nfo), 0))
-                )
-            sum_var = df_nfo[colname].sum()
-            perc_var = sum_var / allocation if allocation != 0 else 0
-            nfo_results[perc] = (sum_var, perc_var)
-    else:
-        nfo_results = {perc: (0, 0) for perc in [10, -10, 15, -15]}
-    bfo_results = {}
-    if not df_bfo.empty:
-        strike_bfo = df_bfo["Strike"]
-        qty_bfo = df_bfo["Net Qty"]
-        is_ce_bfo = df_bfo["Transaction"] == "CE"
-        netpos_pos_bfo = qty_bfo > 0
-        netpos_neg_bfo = qty_bfo < 0
-        for perc in [10, -10, 15, -15]:
-            calc_bfo = bfo_strike + (bfo_strike * perc / 100)
-            colname = f"calc_{perc}%_VAR"
-            if perc > 0:
-                df_bfo[colname] = np.where(
-                    netpos_pos_bfo & is_ce_bfo, (calc_bfo - strike_bfo) * abs(qty_bfo),
-                    np.where(netpos_neg_bfo & is_ce_bfo, (calc_bfo - strike_bfo) * qty_bfo,
-                    np.where(netpos_neg_bfo & ~is_ce_bfo, abs(df_bfo["Sell Avg Price"] * qty_bfo), 0))
-                )
-            else:
-                df_bfo[colname] = np.where(
-                    netpos_pos_bfo & ~is_ce_bfo, (strike_bfo - calc_bfo) * qty_bfo,
-                    np.where(netpos_neg_bfo & is_ce_bfo, abs(df_bfo["Sell Avg Price"] * qty_bfo),
-                    np.where(netpos_neg_bfo & ~is_ce_bfo, (calc_bfo - strike_bfo) * abs(qty_bfo), 0))
-                )
-            sum_var = df_bfo[colname].sum()
-            perc_var = sum_var / allocation if allocation != 0 else 0
-            bfo_results[perc] = (sum_var, perc_var)
-    else:
-        bfo_results = {perc: (0, 0) for perc in [10, -10, 15, -15]}
-    return nfo_results, bfo_results, df_nfo, df_bfo
+# IMPORTANT: To fix "AxiosError: Request failed with status code 403" for file uploads:
+# 1. Create a '.streamlit' folder in your project root (if not exists).
+# 2. Inside it, create 'config.toml' with:
+#    [server]
+#    enableXsrfProtection = false
+#    enableCORS = false
+# 3. Restart the app. For production, use secure alternatives (e.g., auth middleware).
+# 4. If deployed, run with: streamlit run dashboard.py --server.enableXsrfProtection=false --server.enableCORS=false
+# 5. Test with small files (<1MB) first. Update Streamlit: pip install --upgrade streamlit
 
 def run():
-    st.set_page_config(page_title="VaR Calculator Pro", layout="wide")
+    # Custom CSS for larger, responsive design
     st.markdown("""
         <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
         :root {
-            --bg-light: #F9FAFB;
-            --bg-dark: #1F2937;
-            --text-light: #1E3A8A;
-            --text-dark: #F3F4F6;
-            --card-bg-light: #FFFFFF;
-            --card-bg-dark: #374151;
-            --accent: #3B82F6;
-            --accent-hover: #1D4ED8;
-            --border-accent: #93C5FD;
-            --shadow-light: rgba(0, 0, 0, 0.08);
-            --shadow-dark: rgba(0, 0, 0, 0.4);
-            --positive-color: #10B981;
-            --negative-color: #EF4444;
-            --header-gradient: linear-gradient(90deg, #3B82F6, #A855F7, #EC4899);
-            --blur: blur(8px);
+            --accent1: #6D28D9;
+            --dash-purple: #6D28D9;
+            --dash-pink: #DB2777;
+            --admin-accent: linear-gradient(135deg, #6D28D9 0%, #DB2777 100%);
+            --font-family: 'Inter', sans-serif;
+            --border-radius: 16px;
+            --transition: 0.4s ease;
+            --shadow-light: 0 10px 24px rgba(0,0,0,0.1);
+            --shadow-dark: 0 14px 36px rgba(0,0,0,0.2);
+            --error-bg: #FEE2E2;
         }
-        .varpro-container {
-            font-family: 'Inter', sans-serif;
-            max-width: 1400px;
-            margin: 2rem auto;
-            padding: 2rem;
-            border-radius: 1rem;
-            background: var(--bg-light);
-            box-shadow: 0 8px 16px var(--shadow-light);
-            transition: all 0.3s ease;
+        
+        .main {
+            padding: 3vw 2vw;
+            width: 100%;
+            max-width: 100vw;
+            margin: 0 auto;
+            box-sizing: border-box;
+            overflow-x: hidden;
         }
-        .dark-mode .varpro-container {
-            background: var(--bg-dark);
-            color: var(--text-dark);
-            box-shadow: 0 8px 16px var(--shadow-dark);
+        
+        h1, h2, h3 {
+            font-family: var(--font-family);
+            font-weight: 800;
+            text-align: center;
+            margin: 1.5rem 0;
         }
-        .varpro-container * {
+        
+        h1 {
+            font-size: clamp(2rem, 6vw, 2.5rem);
+            margin-bottom: 1.2rem;
+        }
+        
+        h2 {
+            font-size: clamp(1.4rem, 4vw, 1.8rem);
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            letter-spacing: 1px;
+        }
+        
+        .stTextInput > div > div > input, .stDateInput > div > div > input {
+            border-radius: var(--border-radius);
+            border: 1px solid #D1D5DB;
+            padding: 1rem 1.5rem;
+            font-family: var(--font-family);
+            font-size: clamp(1rem, 3vw, 1.2rem);
+            width: 100%;
+            box-sizing: border-box;
+            margin: 1rem 0;
+        }
+        
+        .stSelectbox > div > div > select {
+            border-radius: var(--border-radius);
+            border: 1px solid #D1D5DB;
+            padding: 1rem 1.5rem;
+            font-family: var(--font-family);
+            font-size: clamp(1rem, 3vw, 1.2rem);
+            width: 100%;
+            box-sizing: border-box;
+            margin: 1rem 0;
+        }
+        
+        .stFileUploader > div > div > div {
+            border-radius: var(--border-radius);
+            border: 2px dashed #ccc;
+            padding: 1.5rem;
+            width: 100%;
+            box-sizing: border-box;
             text-align: center;
         }
-        .varpro-container .stApp {
-            background: inherit;
-            color: inherit;
-        }
-        .header {
-            font-size: 2.5rem;
-            font-weight: 800;
-            background: var(--header-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 0.5rem;
-        }
-        .subheader {
-            font-size: 1.1rem;
-            color: #4B5563;
-            margin-bottom: 1.5rem;
-        }
-        .dark-mode .subheader {
-            color: #D1D5DB;
-        }
-        .input-container, .results-container, .manage-var-container {
-            background: var(--card-bg-light);
-            border: 1px solid var(--border-accent);
-            border-radius: 1rem;
-            padding: 1.5rem;
-            margin: 1.5rem 0;
-            box-shadow: 0 4px 8px var(--shadow-light);
-        }
-        .dark-mode .input-container, .dark-mode .results-container, .dark-mode .manage-var-container {
-            background: var(--card-bg-dark);
-            box-shadow: 0 4px 8px var(--shadow-dark);
-        }
+        
         .stButton > button {
-            background: var(--header-gradient);
-            color: white;
+            background-image: var(--admin-accent);
             border: none;
-            padding: 0.75rem 2rem;
-            border-radius: 0.5rem;
+            border-radius: var(--border-radius);
+            color: white;
+            padding: 1rem 2.5rem;
             font-weight: 600;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            min-width: 200px;
-            margin: 0.5rem;
-            box-shadow: 0 4px 8px var(--shadow-light);
-        }
-        .stButton > button:hover {
-            background: linear-gradient(90deg, #2563EB, #9333EA, #DB2777);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px var(--shadow-light);
-        }
-        .dark-mode .stButton > button:hover {
-            box-shadow: 0 6px 12px var(--shadow-dark);
-        }
-        .metric-card {
-            border-radius: 0.75rem;
-            padding: 1rem;
-            background: var(--card-bg-light);
-            border: 1px solid var(--border-accent);
-            margin: 0.5rem;
-            box-shadow: 0 4px 8px var(--shadow-light);
-            transition: all 0.3s ease;
-        }
-        .metric-card:hover {
-            transform: translateY(-3px);
-            border-color: var(--accent);
-            box-shadow: 0 6px 12px var(--shadow-light);
-        }
-        .dark-mode .metric-card {
-            background: var(--card-bg-dark);
-            box-shadow: 0 4px 8px var(--shadow-dark);
-        }
-        .metric-positive [data-testid="stMetricValue"], .metric-positive [data-testid="stMetricDelta"] {
-            color: var(--positive-color) !important;
-        }
-        .metric-negative [data-testid="stMetricValue"], .metric-negative [data-testid="stMetricDelta"] {
-            color: var(--negative-color) !important;
-        }
-        .stFileUploader > div > div > input, .stNumberInput > div > div > input, .stSelectbox > div > div > select {
-            border: 1px solid var(--border-accent);
-            border-radius: 0.5rem;
-            padding: 0.5rem;
+            font-family: var(--font-family);
+            font-size: clamp(1rem, 3vw, 1.2rem);
+            transition: all var(--transition);
             width: 100%;
-            max-width: 500px;
-            margin: 0.5rem auto;
-            background: var(--card-bg-light);
-            box-shadow: 0 2px 4px var(--shadow-light);
-            transition: all 0.3s ease;
+            box-sizing: border-box;
+            margin: 1.5rem 0;
         }
-        .dark-mode .stFileUploader > div > div > input, .dark-mode .stNumberInput > div > div > input, 
-        .dark-mode .stSelectbox > div > div > select {
-            background: var(--card-bg-dark);
-            color: var(--text-dark);
-            box-shadow: 0 2px 4px var(--shadow-dark);
+        
+        .stButton > button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 28px rgba(109,40,217,0.4);
         }
-        .stForm {
-            border: 1px solid var(--border-accent);
-            border-radius: 1rem;
-            padding: 1.5rem;
-            background: var(--card-bg-light);
-            box-shadow: 0 4px 8px var(--shadow-light);
+        
+        .metric-card {
+            background: white;
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-light);
+            text-align: center;
+            border-left: 4px solid var(--accent1);
+            margin-bottom: 2rem;
+            width: 100%;
+            box-sizing: border-box;
         }
-        .dark-mode .stForm {
-            background: var(--card-bg-dark);
-            box-shadow: 0 4px 8px var(--shadow-dark);
+        
+        .input-section {
+            background: #f8f9fa;
+            padding: 2.5rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 2.5rem;
+            box-shadow: var(--shadow-light);
+            width: 100%;
+            box-sizing: border-box;
         }
-        .stExpander {
-            border: 1px solid var(--border-accent);
-            border-radius: 0.75rem;
-            background: var(--card-bg-light);
-            margin: 1rem 0;
-            box-shadow: 0 4px 8px var(--shadow-light);
+        
+        .positive { color: #10b981; }
+        .negative { color: #ef4444; }
+        
+        .stDataFrame, .stPlotlyChart {
+            width: 100%;
+            box-sizing: border-box;
+            margin: 0 auto;
+            min-height: 50vh;
         }
-        .dark-mode .stExpander {
-            background: var(--card-bg-dark);
-            box-shadow: 0 4px 8px var(--shadow-dark);
-        }
-        .download-button {
-            background: var(--header-gradient);
-            color: white !important;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem;
-            text-decoration: none;
-            font-weight: 500;
-            margin: 0.5rem;
-            box-shadow: 0 4px 8px var(--shadow-light);
-            display: inline-block;
-        }
-        .download-button:hover {
-            background: linear-gradient(90deg, #2563EB, #9333EA, #DB2777);
-            transform: translateY(-2px);
-        }
-        .centered-image img {
-            width: 100px;
-            height: auto;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 8px var(--shadow-light);
-            transition: transform 0.3s ease;
-        }
-        .centered-image img:hover {
-            transform: scale(1.1);
-        }
-        .dark-mode .centered-image img {
-            box-shadow: 0 4px 8px var(--shadow-dark);
-        }
-        .stColumns {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1rem;
-            justify-content: center;
-        }
-        @media (max-width: 768px) {
-            .varpro-container {
-                padding: 1rem;
-                margin: 1rem;
+        
+        /* Responsive adjustments */
+        @media (max-width: 1024px) {
+            .main {
+                padding: 2vw 1.5vw;
             }
-            .header {
-                font-size: 2rem;
+            h1 {
+                font-size: clamp(1.8rem, 5vw, 2.2rem);
             }
-            .subheader {
-                font-size: 1rem;
+            h2 {
+                font-size: clamp(1.2rem, 3.5vw, 1.6rem);
             }
-            .stButton > button, .download-button {
-                min-width: 160px;
-                padding: 0.5rem 1.5rem;
+            .input-section, .metric-card {
+                padding: 1.5rem;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            .main {
+                padding: 1.5rem;
+            }
+            h1 {
+                font-size: clamp(1.6rem, 4.5vw, 2rem);
+            }
+            h2 {
+                font-size: clamp(1rem, 3vw, 1.4rem);
+            }
+            .stButton > button {
+                padding: 0.8rem 1.5rem;
             }
             .metric-card {
-                max-width: 100%;
-                padding: 0.75rem;
+                padding: 1.2rem;
+                margin-bottom: 1.2rem;
+            }
+            .input-section {
+                padding: 1.2rem;
+            }
+            .stTextInput > div > div > input, .stDateInput > div > div > input, .stSelectbox > div > div > select {
+                padding: 0.8rem;
+                font-size: clamp(0.9rem, 2.5vw, 1rem);
+            }
+            .stPlotlyChart, .stDataFrame {
+                min-height: 40vh;
             }
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            .main {
+                background: transparent;
+                color: #F3F4F6;
+            }
+            h1, h2, h3 {
+                background: var(--admin-accent);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+            .input-section {
+                background: rgba(255,255,255,0.1);
+                box-shadow: var(--shadow-dark);
+                border: 1px solid rgba(255,255,255,0.2);
+            }
+            .metric-card {
+                background: rgba(255,255,255,0.1);
+                box-shadow: var(--shadow-dark);
+                border-left: 4px solid var(--accent1);
+            }
+            .stTextInput > div > div > input, .stDateInput > div > div > input {
+                background: rgba(255,255,255,0.08);
+                color: #F3F4F6;
+                border: 1px solid rgba(255,255,255,0.15);
+            }
+            .stSelectbox > div > div > select {
+                background: rgba(255,255,255,0.08);
+                color: #F3F4F6;
+                border: 1px solid rgba(255,255,255,0.15);
+            }
+            .stFileUploader > div > div > div {
+                background: rgba(255,255,255,0.1);
+                border: 2px dashed rgba(255,255,255,0.2);
+            }
+            .stButton > button {
+                background-image: var(--admin-accent);
+            }
+            .stDataFrame, .stPlotlyChart {
+                background: transparent;
+            }
         }
         </style>
-        <script>
-        function applyVarproTheme(theme) {
-            const container = document.querySelector('.varpro-container');
-            if (container) {
-                container.classList.remove('light-mode', 'dark-mode');
-                container.classList.add(theme + '-mode');
-                localStorage.setItem('varpro-theme', theme);
-            }
-        }
-        document.addEventListener('DOMContentLoaded', () => {
-            const savedTheme = localStorage.getItem('varpro-theme') || 
-                (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-            applyVarproTheme(savedTheme);
-        });
-        </script>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
     """, unsafe_allow_html=True)
 
-    st.markdown('<div class="varpro-container">', unsafe_allow_html=True)
-    st.markdown('<h1 class="header">VaR Calculator Pro</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="subheader">Precision Risk Analysis for Nifty & Sensex Options</p>', unsafe_allow_html=True)
-    st.markdown('<div class="centered-image"><img src="https://img.icons8.com/fluency/96/000000/calculator.png"></div>', unsafe_allow_html=True)
+    # Define the comment lines to prepend to the updated usersetting CSV
+    comment_lines = """# Please fill all values carefully. ANY VALUE WHICH IS NOT REQUIRED CAN BE LEFT BLANK.
+# For Boolean, True / False OR Yes / No can be used.
+# For NRML SqOff, 0 = None, 1 = All, 2 = Today
+# For Time, enter like 15:15:00.
+# Password & PIN: These are only required if you have selected for Auto Login. Auto login internally fills user details in browser for easy login. It is totally optional feature.
+# Broker: Zerodha, AliceBlue etc.
+"""
+
+    # Main header
+    st.markdown('<div class="main">', unsafe_allow_html=True)
+    st.markdown('<h1>📊 Algo 8 Calculator</h1>', unsafe_allow_html=True)
+    st.markdown("**Calculate Realized & Unrealized PNL for NIFTY/SENSEX Options**", unsafe_allow_html=True)
+    st.info("👇 Upload your files and configure settings below to calculate PNL. If uploads fail (403 error), check the config.toml fix in the code comments.")
 
     # Input Section
+    # st.markdown("### ⚙️ Input Settings", unsafe_allow_html=True)
     with st.container():
-        st.markdown('<div class="input-container">', unsafe_allow_html=True)
-        st.markdown('<h3 class="text-lg font-semibold mb-4">Input Parameters</h3>', unsafe_allow_html=True)
-        uploaded_file = st.file_uploader("Upload Positions CSV", type=["csv"], help="Upload a CSV with columns: UserID, Symbol, Exchange, Net Qty, Sell Avg Price")
+        # st.markdown('<div class="input-section">', unsafe_allow_html=True)
         
-        col1, col2, col3 = st.columns([1, 1, 1])
+        # File Uploaders in a 2-column grid
+        st.subheader("📁 Upload Files")
+        col1, col2 = st.columns(2, gap="medium")
         with col1:
-            nfo_strike = st.number_input("Nifty Strike Price", min_value=0, value=24600, step=100, help="Current Nifty (NFO) strike price")
-        with col2:
-            bfo_strike = st.number_input("Sensex Strike Price", min_value=0, value=80200, step=100, help="Current Sensex (BFO) strike price")
-        with col3:
-            allocation = st.number_input("Allocation Amount", min_value=0, value=50000000, step=1000000, help="Total allocation for VaR calculations")
+            uploaded_usersetting = st.file_uploader(
+                "User Settings CSV", 
+                type="csv", 
+                help="VS1 USERSETTING( EVE ).csv - Ensure file <1MB for testing",
+                key="usersetting"
+            )
+            if uploaded_usersetting:
+                st.success("✅ User Settings uploaded")
+            uploaded_position = st.file_uploader(
+                "Position CSV", 
+                type="csv", 
+                help="VS1 Position(EOD).csv",
+                key="position"
+            )
+            if uploaded_position:
+                st.success("✅ Position uploaded")
         
-        if uploaded_file is not None:
-            df = pd.read_csv(uploaded_file)
-            required_columns = ["UserID", "Symbol", "Exchange", "Net Qty", "Sell Avg Price"]
-            if not all(col in df.columns for col in required_columns):
-                st.error(f"Missing required columns: {', '.join(required_columns)}")
-            else:
-                unique_users = ["Select a User"] + df["UserID"].unique().tolist()
-                selected_user = st.selectbox("Select User", unique_users, help="Select a user to calculate VaR")
-                if st.button("Calculate VaR", key="calc_var"):
-                    if selected_user == "Select a User":
-                        st.error("Please select a valid user")
-                    elif allocation <= 0:
-                        st.error("Allocation amount must be greater than zero")
-                    elif nfo_strike <= 0 or bfo_strike <= 0:
-                        st.error("Strike prices must be positive")
-                    else:
-                        with st.spinner(f"Calculating VaR for {selected_user}..."):
-                            user_df = df[df["UserID"] == selected_user]
-                            nfo_results, bfo_results, df_nfo, df_bfo = calculate_var(user_df, nfo_strike, bfo_strike, allocation)
-                            st.session_state['results'] = {
-                                selected_user: {
-                                    'nfo_results': nfo_results,
-                                    'bfo_results': bfo_results,
-                                    'df_nfo': df_nfo,
-                                    'df_bfo': df_bfo
-                                }
-                            }
-                            st.session_state['nfo_strike'] = nfo_strike
-                            st.session_state['bfo_strike'] = bfo_strike
-                            st.session_state['allocation'] = allocation
-                            st.session_state['df'] = df
-                            st.session_state['selected_user'] = selected_user
-                            st.success(f"VaR calculated for {selected_user}!")
+        with col2:
+            uploaded_orderbook = st.file_uploader(
+                "Order Book CSV", 
+                type="csv", 
+                help="VS1 ORDERBOOK.csv",
+                key="orderbook"
+            )
+            if uploaded_orderbook:
+                st.success("✅ Order Book uploaded")
+            uploaded_bhav = st.file_uploader(
+                "Bhavcopy CSV", 
+                type="csv", 
+                help="opXXXXXX.csv (Bhavcopy)",
+                key="bhavcopy"
+            )
+            if uploaded_bhav:
+                st.success("✅ Bhavcopy uploaded")
+        
+        st.divider()
+        
+        # Settings and Features
+        st.subheader("🎛️ Configuration")
+        col3, col4 = st.columns(2, gap="medium")
+        with col3:
+            symbol = st.selectbox("Select Index", ["NIFTY", "SENSEX"], index=0, key="symbol")
+            expiry = st.date_input("Select Expiry Date", value=pd.to_datetime("2025-09-23"), key="expiry")
+        with col4:
+            show_charts = st.checkbox("📊 Show Visual Charts", value=True, key="show_charts")
+            show_details = st.checkbox("🔍 Show Detailed Breakdown", value=False, key="show_details")
+            auto_refresh = st.checkbox("🔄 Auto-refresh Results", value=False, key="auto_refresh")
+        
         st.markdown('</div>', unsafe_allow_html=True)
+        
+        if auto_refresh:
+            time.sleep(5)  # Simulate auto-refresh (remove in production for real-time)
 
-    # Results Section
-    if 'results' in st.session_state and st.session_state.get('selected_user') != "Select a User":
-        user_id = st.session_state['selected_user']
-        user_results = st.session_state['results'][user_id]
-        percs = [10, -10, 15, -15]
+    # Calculate button
+    if st.button("🚀 Calculate PNL", use_container_width=True, key="calculate_pnl"):
+        if all([uploaded_usersetting, uploaded_orderbook, uploaded_position, uploaded_bhav]):
+            with st.spinner("🔄 Processing your data... This may take a moment for large files."):
+                try:
+                    # Read uploaded files safely
+                    df1 = pd.read_csv(uploaded_usersetting, skiprows=6)
+                    df2 = pd.read_csv(uploaded_orderbook, index_col=False)
+                    df3 = pd.read_csv(uploaded_position)
+                    df_bhav = pd.read_csv(uploaded_bhav)
 
-        with st.container():
-            st.markdown('<div class="results-container">', unsafe_allow_html=True)
-            st.markdown(f'<h2 class="text-xl font-semibold mb-4">Results for User: {user_id}</h2>', unsafe_allow_html=True)
-            
-            st.markdown('<h3 class="text-lg font-semibold mb-3">Nifty (NFO) VaR</h3>', unsafe_allow_html=True)
-            cols = st.columns(4)
-            for idx, perc in enumerate(percs):
-                sum_var, perc_var = user_results['nfo_results'][perc]
-                metric_class = "metric-positive" if sum_var >= 0 else "metric-negative"
-                with cols[idx]:
-                    st.markdown(f'<div class="metric-card {metric_class}">', unsafe_allow_html=True)
-                    st.metric(label=f"VaR at {perc}%", value=f"₹{sum_var:,.2f}", delta=f"{perc_var:.4%}")
-                    st.markdown('</div>', unsafe_allow_html=True)
+                    # Ensure Max Loss column exists in df1
+                    if "Max Loss" not in df1.columns:
+                        df1["Max Loss"] = 0.0  # Initialize with zeros if column is missing
 
-            st.markdown('<h3 class="text-lg font-semibold mt-6 mb-3">Sensex (BFO) VaR</h3>', unsafe_allow_html=True)
-            cols = st.columns(4)
-            for idx, perc in enumerate(percs):
-                sum_var, perc_var = user_results['bfo_results'][perc]
-                metric_class = "metric-positive" if sum_var >= 0 else "metric-negative"
-                with cols[idx]:
-                    st.markdown(f'<div class="metric-card {metric_class}">', unsafe_allow_html=True)
-                    st.metric(label=f"VaR at {perc}%", value=f"₹{sum_var:,.2f}", delta=f"{perc_var:.4%}")
-                    st.markdown('</div>', unsafe_allow_html=True)
+                    # Validate inputs
+                    expiry_str = expiry.strftime("%d-%m-%Y")
+                    if symbol not in ["NIFTY", "SENSEX"]:
+                        st.error("Invalid symbol. Please select 'NIFTY' or 'SENSEX'.")
+                        st.stop()
+                    try:
+                        pd.to_datetime(expiry_str, format="%d-%m-%Y")
+                    except ValueError:
+                        st.error("Invalid expiry date format.")
+                        st.stop()
 
-            col1, col2 = st.columns(2)
-            with col1:
-                st.download_button(
-                    label=f"Download NFO CSV",
-                    data=user_results['df_nfo'].to_csv(index=False),
-                    file_name=f"nfo_processed_{user_id}.csv",
-                    mime="text/csv",
-                    key=f"download_nfo_{user_id}",
-                    help="Download processed NFO data"
-                )
-            with col2:
-                st.download_button(
-                    label=f"Download BFO CSV",
-                    data=user_results['df_bfo'].to_csv(index=False),
-                    file_name=f"bfo_processed_{user_id}.csv",
-                    mime="text/csv",
-                    key=f"download_bfo_{user_id}",
-                    help="Download processed BFO data"
-                )
+                    # Process Symbol in df3
+                    df3["Symbol"] = df3["Symbol"].astype(str).str[-5:]+df3["Symbol"].astype(str).str[-8:-6]
 
-            with st.expander("Preview Processed Data", expanded=False):
-                st.subheader("NFO Data Preview")
-                st.dataframe(user_results['df_nfo'].head(10), use_container_width=True)
-                st.subheader("BFO Data Preview")
-                st.dataframe(user_results['df_bfo'].head(10), use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+                    # Split users
+                    temp = df1[df1["Broker"]=="MasterTrust_Noren"]
+                    noren_user = temp["User ID"].to_list()
+                    temp = df1[df1["Broker"]!="MasterTrust_Noren"]
+                    not_noren_user = temp["User ID"].to_list()
+                    df3_not = df3[df3["UserID"].isin(not_noren_user)].copy()
 
-        # Manage VaR Section
-        with st.container():
-            st.markdown('<div class="manage-var-container">', unsafe_allow_html=True)
-            if st.button(f"Add Hypothetical Position", key=f"manage_var_btn_{user_id}"):
-                st.session_state[f'manage_var_{user_id}'] = True
-                for key in [f'manage_index_{user_id}', f'manage_trans_{user_id}', f'manage_strike_{user_id}', 
-                           f'manage_price_{user_id}', f'manage_qty_{user_id}']:
-                    if key in st.session_state:
-                        del st.session_state[key]
-            
-            if st.session_state.get(f'manage_var_{user_id}'):
-                st.markdown('<h3 class="text-lg font-semibold mb-3">Add Hypothetical Position</h3>', unsafe_allow_html=True)
-                with st.form(key=f"manage_var_form_{user_id}"):
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        index = st.selectbox("Index", ["NFO", "BFO"], help="Select NFO (Nifty) or BFO (Sensex)")
-                    with col2:
-                        trans = st.selectbox("Transaction", ["CE", "PE"], help="Select CE (Call) or PE (Put)")
-                    with col3:
-                        strike_step = 50 if index == "NFO" else 100
-                        strike_input = st.number_input("Strike Price", min_value=0, value=0, step=strike_step, 
-                                                    help=f"Strike price (increments by {strike_step})")
-                    col4, col5 = st.columns(2)
-                    with col4:
-                        price = st.number_input("Price", min_value=0.0, value=0.0, step=0.1, help="Average price")
-                    with col5:
-                        qty = st.number_input("Quantity", value=0, step=1, help="Quantity (positive for long, negative for short)")
-                    if st.form_submit_button("Recalculate VaR"):
-                        if strike_input <= 0 or price <= 0 or qty == 0:
-                            st.error("Strike price, price, and quantity must be non-zero")
-                        elif (index == "NFO" and qty % 75 != 0) or (index == "BFO" and qty % 20 != 0):
-                            st.error(f"Quantity must be a multiple of {'75' if index == 'NFO' else '20'} for {index}")
-                        else:
-                            user_df = st.session_state['df'][st.session_state['df']["UserID"] == user_id].copy()
-                            new_row_data = {col: '' if pd.api.types.is_string_dtype(user_df[col]) else 0 for col in user_df.columns}
-                            buy_price = price if qty > 0 else 0
-                            sell_price = price if qty < 0 else 0
-                            new_row_data.update({
-                                'UserID': user_id,
-                                'Exchange': index,
-                                'Symbol': f"DUMMY {trans} {strike_input}",
-                                'Net Qty': qty,
-                                'Buy Avg Price': buy_price,
-                                'Sell Avg Price': sell_price,
-                            })
-                            new_row_df = pd.DataFrame([new_row_data])
-                            recal_df = pd.concat([user_df, new_row_df], ignore_index=True)
-                            nfo_results_recal, bfo_results_recal, df_nfo_recal, df_bfo_recal = calculate_var(
-                                recal_df, st.session_state['nfo_strike'], st.session_state['bfo_strike'], st.session_state['allocation']
+                    # Bhavcopy cleaning
+                    if symbol=="NIFTY":
+                        df_bhav["Date"] = df_bhav["CONTRACT_D"].str.extract(r'(\d{2}-[A-Z]{3}-\d{4})')
+                        df_bhav["Symbol"] = df_bhav["CONTRACT_D"].str.extract(r'^(.*?)(\d{2}-[A-Z]{3}-\d{4})')[0]
+                        df_bhav["Strike_Type"] = df_bhav["CONTRACT_D"].str.extract(r'(PE\d+|CE\d+)$')
+                        df_bhav["Date"] = pd.to_datetime(df_bhav["Date"], format="%d-%b-%Y")
+                        df_bhav["Strike_Type"] = df_bhav["Strike_Type"].str.replace(r'^(PE|CE)(\d+)$', r'\2\1', regex=True)
+                        target_symbol = "OPTIDXNIFTY"
+                        df_bhav = df_bhav[(df_bhav["Date"] == pd.to_datetime(expiry_str, format="%d-%m-%Y")) & (df_bhav["Symbol"] == target_symbol)]
+                        df3_not["Strike_Type"] = df3_not["Symbol"].str.extract(r'(\d+[A-Z]{2})$')
+                        df3_not = df3_not.merge(df_bhav[["Symbol", "Strike_Type", "SETTLEMENT"]], left_on="Strike_Type", right_on="Strike_Type", how="left")
+                        settelment = "SETTLEMENT"
+                        symbols = "Symbol"
+                    elif symbol=="SENSEX":
+                        df_bhav["Date"] = pd.to_datetime(df_bhav["Market Summary Date"], format="%d %b %Y", errors="coerce")
+                        df_bhav["Expiry Date"] = pd.to_datetime(df_bhav["Expiry Date"], format="%d %b %Y", errors="coerce")
+                        df_bhav["Symbols"] = df_bhav["Series Code"].astype(str).str[-7:]
+                        df_bhav = df_bhav[(df_bhav["Expiry Date"] == pd.to_datetime(expiry_str, format="%d-%m-%Y"))]
+                        df_bhav["Symbols"] = df_bhav["Symbols"].astype(str).str.strip()
+                        bhav_mapping = df_bhav.drop_duplicates(subset="Symbols", keep="last").set_index("Symbols")["Close Price"]
+                        df3_not["Close Price"] = df3_not["Symbol"].map(bhav_mapping)
+                        settelment = "Close Price"
+                        symbols = "Symbols"
+
+                    # Not Noren Calculation
+                    dict2 = {}
+                    dict3 = {}
+                    for i in range(len(not_noren_user)):
+                        df = df3_not[df3_not["UserID"]==not_noren_user[i]].copy()
+                        conditions = [
+                            df["Net Qty"] == 0,
+                            df["Net Qty"] > 0,
+                            df["Net Qty"] < 0
+                        ]
+                        choices = [
+                            (df["Sell Avg Price"] - df["Buy Avg Price"]) * df["Sell Qty"],
+                            (df["Sell Avg Price"] - df["Buy Avg Price"]) * df["Sell Qty"],
+                            (df["Sell Avg Price"] - df["Buy Avg Price"]) * df["Buy Qty"]
+                        ]
+                        df.loc[:, "Calculated_Realized_PNL"] = np.select(conditions, choices, default=0)
+                        df.loc[:, "Calculated_Unrealized_PNL"] = np.select(
+                            [
+                                df["Net Qty"] > 0,
+                                df["Net Qty"] < 0
+                            ],
+                            [
+                                (df[settelment] - df["Buy Avg Price"]) * abs(df["Net Qty"]),
+                                (df["Sell Avg Price"] - df[settelment]) * abs(df["Net Qty"])
+                            ],
+                            default=0
+                        )
+                        df.loc[:, "Matching_Realized"] = df["Realized Profit"] == df["Calculated_Realized_PNL"]
+                        df.loc[:, "Matching_Realized"] = df["Matching_Realized"].replace({True: "TRUE", False: ""})
+                        df.loc[:, "Matching_Unrealized"] = df["Unrealized Profit"] == df["Calculated_Unrealized_PNL"]
+                        df.loc[:, "Matching_Unrealized"] = df["Matching_Unrealized"].replace({True: "TRUE", False: ""})
+                        total_realized_pnl = df["Calculated_Realized_PNL"].fillna(0).sum()
+                        total_unrealized_pnl = df["Calculated_Unrealized_PNL"].fillna(0).sum()
+                        dict2[not_noren_user[i]] = total_realized_pnl
+                        dict3[not_noren_user[i]] = total_unrealized_pnl
+
+                    # Noren Calculation
+                    dict1 = {}
+                    dict4 = {}
+                    if symbol == "NIFTY":
+                        df2 = df2[(df2["Exchange"] == "NFO") & (df2["Symbol"].str.contains("NIFTY"))]
+                    df2["Symbol"] = df2["Symbol"].astype(str).str[-7:]
+                    df2["Exchange Time"] = pd.to_datetime(df2["Exchange Time"], format="%d-%b-%Y %H:%M:%S")
+                    df2 = df2.sort_values(by="Exchange Time")
+                    for i in range(len(noren_user)):
+                        df_user = df2[df2["User ID"] == noren_user[i]].copy()
+                        grouped = df_user.groupby("Symbol")
+                        total_realized_pnl = 0.0
+                        carry_forward = []
+                        for name, group in grouped:
+                            buy_queue = deque()
+                            sell_queue = deque()
+                            net_qty = 0
+                            total_value = 0.0
+                            group = group.sort_values(by="Exchange Time")
+                            for _, row in group.iterrows():
+                                qty = row["Quantity"]
+                                price = row["Avg Price"]
+                                time = row["Exchange Time"]
+                                trans = row["Transaction"]
+                                if trans == "BUY":
+                                    total_value += price * qty
+                                    net_qty += qty
+                                    buy_queue.append((time, price, qty))
+                                elif trans == "SELL":
+                                    total_value -= price * qty
+                                    net_qty -= qty
+                                    sell_queue.append((time, price, qty))
+                                while buy_queue and sell_queue:
+                                    buy_time, buy_price, buy_qty = buy_queue[0]
+                                    sell_time, sell_price, sell_qty = sell_queue[0]
+                                    matched = min(buy_qty, sell_qty)
+                                    pnl = (sell_price - buy_price) * matched
+                                    total_realized_pnl += pnl
+                                    if buy_qty - matched > 0:
+                                        buy_queue[0] = (buy_time, buy_price, buy_qty - matched)
+                                    else:
+                                        buy_queue.popleft()
+                                    if sell_qty - matched > 0:
+                                        sell_queue[0] = (sell_time, sell_price, sell_qty - matched)
+                                    else:
+                                        sell_queue.popleft()
+                            if net_qty != 0:
+                                weighted_avg = total_value / net_qty if net_qty > 0 else -total_value / abs(net_qty)
+                                carry_forward.append({"Symbol": name, "Net_Quantity": net_qty, "Weighted_Avg_Price": weighted_avg, "UserID": noren_user[i]})
+                        dict1[noren_user[i]] = total_realized_pnl
+                        if carry_forward:
+                            df_carry = pd.DataFrame(carry_forward)
+                            if symbol == "NIFTY":
+                                df_carry["Strike_Type"] = df_carry["Symbol"].str.extract(r'(\d+[A-Z]{2})$')
+                                df_carry = df_carry.merge(df_bhav[["Strike_Type", "SETTLEMENT"]], on="Strike_Type", how="left")
+                                settelment_col = "SETTLEMENT"
+                            elif symbol == "SENSEX":
+                                df_carry["Symbols"] = df_carry["Symbol"]
+                                df_carry = df_carry.merge(df_bhav[["Symbols", "Close Price"]], on="Symbols", how="left")
+                                settelment_col = "Close Price"
+                            df_carry.loc[:, "Calculated_Unrealized_PNL"] = np.select(
+                                [
+                                    df_carry["Net_Quantity"] > 0,
+                                    df_carry["Net_Quantity"] < 0
+                                ],
+                                [
+                                    (df_carry[settelment_col] - df_carry["Weighted_Avg_Price"]) * abs(df_carry["Net_Quantity"]),
+                                    (df_carry["Weighted_Avg_Price"] - df_carry[settelment_col]) * abs(df_carry["Net_Quantity"])
+                                ],
+                                default=0
                             )
-                            st.session_state[f'index_selected_{user_id}'] = index
-                            st.session_state[f'nfo_results_recal_{user_id}'] = nfo_results_recal
-                            st.session_state[f'bfo_results_recal_{user_id}'] = bfo_results_recal
-                            st.session_state[f'df_nfo_recal_{user_id}'] = df_nfo_recal
-                            st.session_state[f'df_bfo_recal_{user_id}'] = df_bfo_recal
-                            st.success("VaR recalculated with new position!")
+                            total_unrealized_pnl = df_carry["Calculated_Unrealized_PNL"].fillna(0).sum()
+                        else:
+                            total_unrealized_pnl = 0.0
+                        dict4[noren_user[i]] = total_unrealized_pnl
 
-                if f'nfo_results_recal_{user_id}' in st.session_state:
-                    index_selected = st.session_state[f'index_selected_{user_id}']
-                    st.markdown(f'<h3 class="text-lg font-semibold mb-3">Recalculated {"Nifty (NFO)" if index_selected == "NFO" else "Sensex (BFO)"} VaR</h3>', unsafe_allow_html=True)
-                    cols = st.columns(4)
-                    for idx, perc in enumerate(percs):
-                        sum_var, perc_var = st.session_state[f'nfo_results_recal_{user_id}' if index_selected == "NFO" else f'bfo_results_recal_{user_id}'][perc]
-                        metric_class = "metric-positive" if sum_var >= 0 else "metric-negative"
-                        with cols[idx]:
-                            st.markdown(f'<div class="metric-card {metric_class}">', unsafe_allow_html=True)
-                            st.metric(label=f"VaR at {perc}%", value=f"₹{sum_var:,.2f}", delta=f"{perc_var:.4%}")
-                            st.markdown('</div>', unsafe_allow_html=True)
-                    
-                    st.download_button(
-                        label=f"Download Recalculated {'NFO' if index_selected == 'NFO' else 'BFO'} CSV",
-                        data=st.session_state[f'df_nfo_recal_{user_id}' if index_selected == "NFO" else f'df_bfo_recal_{user_id}'].to_csv(index=False),
-                        file_name=f"{'nfo' if index_selected == 'NFO' else 'bfo'}_recal_processed_{user_id}.csv",
-                        mime="text/csv",
-                        key=f"download_recal_{user_id}"
+                    # Formatting
+                    dict1_fmt = {k: f"{v:.1f}" for k, v in dict1.items()}
+                    dict4_fmt = {k: f"{v:.1f}" for k, v in dict4.items()}
+                    dict2_fmt = {k: f"{v:.2f}" for k, v in dict2.items()}
+                    dict3_fmt = {k: f"{v:.2f}" for k, v in dict3.items()}
+
+                    # Prepare data for display
+                    rows = []
+                    for user in sorted(dict1_fmt.keys()):
+                        rows.append({
+                            "User & PnL Type": f"NOREN_USER - {user}",
+                            "REALIZED_PNL": float(dict1_fmt[user]),
+                            "UNREALIZED_PNL": float(dict4_fmt[user])
+                        })
+                    for user in sorted(dict2_fmt.keys()):
+                        rows.append({
+                            "User & PnL Type": f"NOT_NOREN_USER - {user}",
+                            "REALIZED_PNL": float(dict2_fmt[user]),
+                            "UNREALIZED_PNL": float(dict3_fmt[user])
+                        })
+                    df_display = pd.DataFrame(rows)
+
+                    # Update Max Loss in usersetting df (df1)
+                    telegram_col = "Telegram ID(s)"
+                    if telegram_col not in df1.columns:
+                        st.warning(f"⚠️ '{telegram_col}' column not found in User Settings CSV. Max Loss calculation skipped.")
+                    else:
+                        maxloss_rows = []
+                        for user in noren_user:
+                            if user in dict1:
+                                x = df1.loc[df1["User ID"] == user, telegram_col].iloc[0]
+                                realized_pnl = dict1[user]
+                                max_loss = (x * 0.7) + realized_pnl
+                                df1.loc[df1["User ID"] == user, "Max Loss"] = max_loss
+                                maxloss_rows.append({
+                                    "User ID": user,
+                                    "User Type": "Noren",
+                                    "Telegram ID": x,
+                                    "Max Loss": max_loss
+                                })
+
+                        for user in not_noren_user:
+                            if user in dict2:
+                                x = df1.loc[df1["User ID"] == user, telegram_col].iloc[0]
+                                realized_pnl = dict2[user]
+                                unrealized_pnl = dict3[user]
+                                max_loss = (x * 0.7) + realized_pnl + unrealized_pnl
+                                df1.loc[df1["User ID"] == user, "Max Loss"] = max_loss
+                                maxloss_rows.append({
+                                    "User ID": user,
+                                    "User Type": "Non-Noren",
+                                    "Telegram ID": x,
+                                    "Max Loss": max_loss
+                                })
+
+                        # Display Max Loss Table
+                        st.subheader("💰 Max Loss Summary")
+                        df_maxloss = pd.DataFrame(maxloss_rows)
+                        st.dataframe(
+                            df_maxloss.style.format({"Telegram ID": "{:.2f}", "Max Loss": "{:.2f}"}).map(
+                                lambda x: "color: #ef4444" if isinstance(x, (int, float)) and x < 0 else "color: #10b981",
+                                subset=["Max Loss"]
+                            ),
+                            use_container_width=True,
+                            hide_index=True
+                        )
+
+                    # Key Metrics Section
+                    st.markdown("### 📊 Key Metrics", unsafe_allow_html=True)
+                    col1, col2, col3, col4 = st.columns(4, gap="medium")
+                    total_realized = df_display["REALIZED_PNL"].sum()
+                    total_unrealized = df_display["UNREALIZED_PNL"].sum()
+                    total_pnl = total_realized + total_unrealized
+                    num_users = len(df_display)
+
+                    with col1:
+                        st.markdown(f"""
+                        <div class="metric-card">
+                            <h3 style="margin: 0; font-size: clamp(1.4rem, 4vw, 2rem);">₹{total_realized:,.2f}</h3>
+                            <p style="margin: 0; color: #666; font-size: clamp(0.8rem, 2.5vw, 1rem);">Total Realized PNL</p>
+                            <span class="{'positive' if total_realized >= 0 else 'negative'}">●</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                    with col2:
+                        st.markdown(f"""
+                        <div class="metric-card">
+                            <h3 style="margin: 0; font-size: clamp(1.4rem, 4vw, 2rem);">₹{total_unrealized:,.2f}</h3>
+                            <p style="margin: 0; color: #666; font-size: clamp(0.8rem, 2.5vw, 1rem);">Total Unrealized PNL</p>
+                            <span class="{'positive' if total_unrealized >= 0 else 'negative'}">●</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                    with col3:
+                        st.markdown(f"""
+                        <div class="metric-card">
+                            <h3 style="margin: 0; font-size: clamp(1.4rem, 4vw, 2rem);">₹{total_pnl:,.2f}</h3>
+                            <p style="margin: 0; color: #666; font-size: clamp(0.8rem, 2.5vw, 1rem);">Grand Total PNL</p>
+                            <span class="{'positive' if total_pnl >= 0 else 'negative'}">●</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                    with col4:
+                        st.markdown(f"""
+                        <div class="metric-card">
+                            <h3 style="margin: 0; font-size: clamp(1.4rem, 4vw, 2rem);">{num_users}</h3>
+                            <p style="margin: 0; color: #666; font-size: clamp(0.8rem, 2.5vw, 1rem);">Active Users</p>
+                            <span style="color: #10b981;">●</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                    # Charts Section
+                    if show_charts:
+                        st.subheader("📈 Visual Insights")
+                        col_a, col_b = st.columns(2, gap="medium")
+
+                        with col_a:
+                            # Bar chart for PNL by user type
+                            df_summary = df_display.copy()
+                            df_summary['User_Type'] = df_summary["User & PnL Type"].str.contains("NOREN_USER").map({True: "Noren Users", False: "Non-Noren Users"})
+                            fig_bar = px.bar(df_summary, x="User_Type", y=["REALIZED_PNL", "UNREALIZED_PNL"],
+                                             barmode="group", title="PNL Breakdown by User Type",
+                                             color_discrete_map={"REALIZED_PNL": "#ef4444", "UNREALIZED_PNL": "#10b981"})
+                            fig_bar.update_layout(showlegend=True, font=dict(size=14), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+                            st.plotly_chart(fig_bar, use_container_width=True)
+
+                        with col_b:
+                            # Pie chart for Total PNL Distribution
+                            fig_pie = px.pie(values=[abs(total_realized), abs(total_unrealized)], names=["Realized", "Unrealized"],
+                                             title="PNL Distribution", color_discrete_sequence=["#ef4444", "#10b981"])
+                            fig_pie.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+                            st.plotly_chart(fig_pie, use_container_width=True)
+
+                        # Scatter plot for users
+                        st.markdown("### User PNL Scatter Plot")
+                        fig_scatter = px.scatter(df_display, x="REALIZED_PNL", y="UNREALIZED_PNL",
+                                                 text="User & PnL Type", size=np.sqrt(np.abs(df_display["REALIZED_PNL"] + df_display["UNREALIZED_PNL"] + 1)),  # +1 to avoid zero
+                                                 color="REALIZED_PNL", hover_name="User & PnL Type",
+                                                 title="User PNL Scatter: Realized vs Unrealized",
+                                                 color_continuous_scale="RdYlGn")
+                        fig_scatter.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+                        st.plotly_chart(fig_scatter, use_container_width=True)
+
+                    # Table Section
+                    st.subheader("📋 Calculation Summary")
+                    st.dataframe(
+                        df_display.style.format({
+                            "REALIZED_PNL": "{:.2f}",
+                            "UNREALIZED_PNL": "{:.2f}"
+                        }).map(lambda x: "color: green" if x >= 0 else "color: red",
+                               subset=["REALIZED_PNL", "UNREALIZED_PNL"]),
+                        use_container_width=True,
+                        hide_index=True
                     )
-                    
-                    with st.expander("Preview Recalculated Data", expanded=False):
-                        st.subheader(f"{'NFO' if index_selected == 'NFO' else 'BFO'} Data Preview")
-                        st.dataframe(st.session_state[f'df_nfo_recal_{user_id}' if index_selected == "NFO" else f'df_bfo_recal_{user_id}'].tail(10), use_container_width=True)
-                
-                if st.button("Reset Hypothetical Position", key=f"reset_manage_var_{user_id}"):
-                    for key in [f'index_selected_{user_id}', f'nfo_results_recal_{user_id}', f'bfo_results_recal_{user_id}', 
-                               f'df_nfo_recal_{user_id}', f'df_bfo_recal_{user_id}']:
-                        if key in st.session_state:
-                            del st.session_state[key]
-                    st.success("Hypothetical position reset!")
-            st.markdown('</div>', unsafe_allow_html=True)
 
-    if uploaded_file is None:
-        st.info("Please upload a CSV file to begin")
-    
-    st.markdown('<div class="text-sm text-gray-500 dark:text-gray-400 mt-6">Powered by Streamlit | Developed by Sahil</div>', unsafe_allow_html=True)
+                    # Download Section
+                    st.subheader("💾 Download Results")
+                    col_dl1, col_dl2 = st.columns(2, gap="medium")
+                    with col_dl1:
+                        csv = df_display.to_csv(index=False).encode('utf-8')
+                        st.download_button(
+                            label="Download PNL Summary as CSV",
+                            data=csv,
+                            file_name=f'pnl_summary_{symbol}_{expiry_str}.csv',
+                            mime='text/csv',
+                            use_container_width=True,
+                            key="download_pnl"
+                        )
+                    with col_dl2:
+                        output = io.StringIO()
+                        output.write(comment_lines)
+                        df1.to_csv(output, index=False)
+                        updated_usersetting_csv = output.getvalue().encode('utf-8')
+                        st.download_button(
+                            label="Download Updated Usersetting CSV",
+                            data=updated_usersetting_csv,
+                            file_name=f'updated_usersetting_{expiry_str}.csv',
+                            mime='text/csv',
+                            use_container_width=True,
+                            key="download_usersetting"
+                        )
+
+                    # Detailed Breakdown
+                    if show_details:
+                        st.subheader("🔍 Detailed Position Breakdown")
+                        if 'df3_not' in locals() and not df3_not.empty:
+                            st.dataframe(df3_not.head(100), use_container_width=True)
+                        else:
+                            st.info("No detailed position data available.")
+
+                    # Success message
+                    st.success("✅ Calculation completed! Explore the insights above.")
+
+                except Exception as e:
+                    st.error(f"❌ An error occurred during calculation: {str(e)}")
+                    st.exception(e)
+        else:
+            st.warning("⚠️ Please upload all four files to proceed. If uploads fail, ensure config.toml is set as per code comments.")
+
+    # Footer
+    st.markdown("---")
+    st.markdown(
+        "<p style='text-align: center; color: #888; font-size: clamp(0.9rem, 2.5vw, 1rem);'>Powered by Streamlit | Designed for 2025 UX Excellence | Developed by Sahil</p>",
+        unsafe_allow_html=True
+    )
     st.markdown('</div>', unsafe_allow_html=True)
-
-if __name__ == "__main__":
-    run()
