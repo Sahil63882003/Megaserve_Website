@@ -91,367 +91,513 @@ def get_avatar(name):
         '''
     return '<div class="avatar-placeholder">👤</div>'
 
-# --- Enhanced CSS styles with centralization and symmetry ---
+# --- Enhanced CSS styles with improved sidebar layout ---
 CSS = """
 <style>
 :root {
-    --accent1: #6D28D9;
-    --accent2: #059669;
-    --dash-purple: #6D28D9;
-    --dash-pink: #DB2777;
-    --dash-yellow: #EAB308;
-    --admin-accent: linear-gradient(135deg, #6D28D9 0%, #DB2777 100%);
-    --user-accent: linear-gradient(135deg, #059669 0%, #EAB308 100%);
-    --error-bg: #FEE2E2;
-    --success-bg: #D1FAE5;
-    --font-family: 'Inter', sans-serif;
-    --border-radius: 16px;
-    --transition: 0.4s ease;
-    --shadow-light: 0 10px 24px rgba(0,0,0,0.1);
-    --shadow-dark: 0 14px 36px rgba(0,0,0,0.2);
-    --bg-gradient-light: linear-gradient(135deg, #F3F4F6, #FFFFFF);
-    --bg-gradient-dark: linear-gradient(135deg, #4C1D95, #831843 70%, #92400E 100%);
-    --sidebar-button-width: 100%;
-    --sidebar-button-height: 56px;
+    --primary-color: #4F46E5;
+    --secondary-color: #10B981;
+    --accent-gradient: linear-gradient(135deg, #6366F1 0%, #A855F7 100%);
+    --user-gradient: linear-gradient(135deg, #10B981 0%, #FDE047 100%);
+    --bg-light: linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%);
+    --bg-dark: linear-gradient(135deg, #1F2937 0%, #111827 100%);
+    --text-light: #111827;
+    --text-dark: #F9FAFB;
+    --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    --border-radius: 12px;
+    --transition-fast: 0.2s ease;
+    --transition-slow: 0.4s ease;
+    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --sidebar-width: 300px;
+    --sidebar-btn-height: 56px;
+    --sidebar-btn-padding: 0.75rem 1rem;
+    --sidebar-btn-margin: 0.25rem 0;
+    --action-btn-height: 48px;
+    --action-btn-bg: #EF4444;
+    --action-btn-bg-hover: #DC2626;
 }
+
 body {
     font-family: var(--font-family);
-    margin: 0; padding: 0;
+    margin: 0;
+    padding: 0;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    text-align: center;
+    overflow-x: hidden;
 }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.container, .dash-container {
+    animation: fadeIn var(--transition-slow);
+}
+
 @media (prefers-color-scheme: dark) {
     body {
-        background: var(--bg-gradient-dark);
-        color: #F3F4F6;
+        background: var(--bg-dark);
+        color: var(--text-dark);
     }
-    .container {
-        background: rgba(255, 255, 255, 0.1);
+    .container, .dash-container {
+        background: rgba(31, 41, 55, 0.8);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: var(--shadow-lg);
+    }
+    input, select, .stTextInput > div > div > input, .stSelectbox > div > div > select {
+        background: rgba(55, 65, 81, 0.8);
+        color: var(--text-dark);
         border: 1px solid rgba(255, 255, 255, 0.2);
-        box-shadow: var(--shadow-dark);
-        backdrop-filter: blur(20px);
-    }
-    input, select {
-        background: rgba(255,255,255,0.08);
-        color: #F3F4F6;
-        border: 1px solid rgba(255,255,255,0.15);
+        transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
     }
     input:focus, select:focus {
-        box-shadow: 0 0 12px var(--accent1);
-        border-color: var(--accent1);
-        background: rgba(255,255,255,0.15);
-    }
-    h2, h3 {
-        background: var(--admin-accent);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.3);
     }
     .card, .sidebar-card {
-        background: rgba(255,255,255,0.1);
-        box-shadow: var(--shadow-dark);
-        border-color: rgba(255,255,255,0.2);
-        transition: transform var(--transition), box-shadow var(--transition);
+        background: rgba(31, 41, 55, 0.9);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        box-shadow: var(--shadow-md);
+        transition: transform var(--transition-slow), box-shadow var(--transition-slow), background var(--transition-slow);
     }
     .card:hover, .sidebar-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 16px 40px rgba(0,0,0,0.3);
+        transform: translateY(-4px) scale(1.02);
+        box-shadow: var(--shadow-lg);
+        background: rgba(55, 65, 81, 0.9);
     }
     .stButton > button {
-        background-image: var(--admin-accent);
-        box-shadow: 0 8px 32px rgba(109,40,217,0.6);
-        color: white;
-        font-weight: 700;
-        border-radius: var(--border-radius);
-        padding: 1.2rem 2.5rem;
-        font-size: 1.3rem;
-        transition: transform var(--transition), filter var(--transition);
-        width: 100%;
-        max-width: 600px;
-        margin: 1rem auto;
-        display: block;
-    }
-    .stButton > button:hover {
-        transform: scale(1.05);
-        filter: brightness(1.2);
-    }
-    .sidebar-nav-btn, .stSidebar .stButton > button {
-        background: linear-gradient(135deg, var(--accent1) 0%, var(--dash-pink) 100%);
+        background: var(--accent-gradient);
+        background-size: 200% 200%;
+        animation: gradientShift 5s ease infinite;
         color: white;
         font-weight: 600;
-        border-radius: var(--border-radius);
-        padding: 1rem;
-        margin: 0.6rem 0;
-        width: var(--sidebar-button-width);
-        height: var(--sidebar-button-height);
         border: none;
-        transition: transform var(--transition), box-shadow var(--transition);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.1rem;
-        box-sizing: border-box;
-        text-decoration: none;
+        border-radius: var(--border-radius);
+        padding: 0.75rem 1.5rem;
+        transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+        box-shadow: var(--shadow-sm);
     }
-    .sidebar-nav-btn:hover, .stSidebar .stButton > button:hover {
+    .stButton > button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(109,40,217,0.4);
+        box-shadow: var(--shadow-md);
     }
+    
+    /* Enhanced Sidebar Styles */
+    .stSidebar {
+        width: var(--sidebar-width) !important;
+        background: rgba(17, 24, 39, 0.95) !important;
+        backdrop-filter: blur(20px) !important;
+        border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+    }
+    
+    .stSidebar > div > div {
+        padding: 1rem 0.5rem !important;
+    }
+    
+    /* Standard Sidebar Navigation Buttons */
+    .sidebar-nav-btn {
+        background: var(--accent-gradient) !important;
+        background-size: 200% 200% !important;
+        animation: gradientShift 5s ease infinite !important;
+        color: white !important;
+        border: none !important;
+        border-radius: var(--border-radius) !important;
+        padding: var(--sidebar-btn-padding) !important;
+        margin: var(--sidebar-btn-margin) !important;
+        width: 100% !important;
+        height: var(--sidebar-btn-height) !important;
+        transition: all var(--transition-fast) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 0.75rem !important;
+        font-size: 0.95rem !important;
+        font-weight: 500 !important;
+        box-shadow: var(--shadow-sm) !important;
+        text-decoration: none !important;
+        position: relative !important;
+        overflow: hidden !important;
+        cursor: pointer !important;
+    }
+    
+    .sidebar-nav-btn:hover {
+        transform: translateX(4px) !important;
+        box-shadow: var(--shadow-md) !important;
+        background: linear-gradient(135deg, #A855F7 0%, #6366F1 100%) !important;
+    }
+    
+    .sidebar-nav-btn:active {
+        transform: translateX(2px) !important;
+        box-shadow: var(--shadow-sm) !important;
+    }
+    
+    /* User-specific navigation buttons */
     .user-nav-btn {
-        background: linear-gradient(135deg, var(--accent2) 0%, #EAB308 100%);
+        background: var(--user-gradient) !important;
+        animation: gradientShift 5s ease infinite !important;
     }
-    .logout-btn, .stSidebar .stButton > button[key="logout_button"] {
-        color: #DDA0DD;
-        text-decoration: underline;
-        background: none;
-        box-shadow: none;
-        width: var(--sidebar-button-width);
-        height: var(--sidebar-button-height);
-        font-size: 1.1rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+    
+    .user-nav-btn:hover {
+        background: linear-gradient(135deg, #FDE047 0%, #10B981 100%) !important;
     }
-    .logout-btn:hover, .stSidebar .stButton > button[key="logout_button"]:hover {
-        color: #FF69B4;
-        transform: translateY(-2px);
+    
+    /* Action Buttons (Back to Dashboard and Logout) */
+    .action-btn {
+        background: var(--action-btn-bg) !important;
+        color: white !important;
+        border: none !important;
+        font-weight: 600 !important;
+        height: var(--action-btn-height) !important;
+        padding: var(--sidebar-btn-padding) !important;
+        margin: var(--sidebar-btn-margin) !important;
+        width: 100% !important;
+        border-radius: var(--border-radius) !important;
+        transition: all var(--transition-fast) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 0.5rem !important;
+        font-size: 0.95rem !important;
+        box-shadow: var(--shadow-sm) !important;
+    }
+    
+    .action-btn:hover {
+        background: var(--action-btn-bg-hover) !important;
+        transform: translateX(2px) !important;
+        box-shadow: var(--shadow-md) !important;
+    }
+    
+    .action-btn:active {
+        transform: translateX(0) !important;
+        box-shadow: var(--shadow-sm) !important;
+    }
+    
+    /* Navigation title styling */
+    .sidebar-title {
+        color: var(--text-dark) !important;
+        font-size: 1.25rem !important;
+        font-weight: 700 !important;
+        margin-bottom: 1.5rem !important;
+        padding-bottom: 0.5rem !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+        text-align: center !important;
+    }
+    
+    .user-info {
+        background: rgba(55, 65, 81, 0.5) !important;
+        border-radius: var(--border-radius) !important;
+        padding: 1rem !important;
+        margin-bottom: 1.5rem !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        text-align: center !important;
+    }
+    
+    .user-info .avatar {
+        margin: 0 auto 0.75rem !important;
+    }
+    
+    .user-name {
+        color: var(--text-dark) !important;
+        font-weight: 600 !important;
+        font-size: 1rem !important;
+        margin: 0 !important;
+    }
+    
+    .user-role {
+        color: #9CA3AF !important;
+        font-size: 0.875rem !important;
+        margin: 0 !important;
     }
 }
+
 @media (prefers-color-scheme: light) {
     body {
-        background: var(--bg-gradient-light);
-        color: #1F2937;
+        background: var(--bg-light);
+        color: var(--text-light);
     }
-    .container {
+    .container, .dash-container {
         background: white;
         border: 1px solid #E5E7EB;
-        box-shadow: var(--shadow-light);
+        box-shadow: var(--shadow-md);
     }
-    input, select {
+    input, select, .stTextInput > div > div > input, .stSelectbox > div > div > select {
         background: white;
-        color: #1F2937;
+        color: var(--text-light);
         border: 1px solid #D1D5DB;
-        border-radius: var(--border-radius);
-        padding: 1rem 1.5rem;
-        font-size: 1.2rem;
+        transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
     }
     input:focus, select:focus {
-        border-color: var(--accent1);
-        box-shadow: 0 0 12px rgba(109,40,217,0.5);
-    }
-    h2, h3 {
-        color: var(--dash-purple);
-        font-weight: 800;
-        letter-spacing: 1.5px;
-        margin-bottom: 1.5rem;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
     }
     .card, .sidebar-card {
         background: white;
-        box-shadow: var(--shadow-light);
-        border: 1px solid #E0E7FF;
-        border-radius: var(--border-radius);
-        padding: 2.5rem 2rem;
-        transition: transform var(--transition), box-shadow var(--transition);
+        border: 1px solid #E5E7EB;
+        box-shadow: var(--shadow-sm);
+        transition: transform var(--transition-slow), box-shadow var(--transition-slow);
     }
     .card:hover, .sidebar-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 16px 40px rgba(109,40,217,0.2);
+        transform: translateY(-4px) scale(1.02);
+        box-shadow: var(--shadow-md);
     }
     .stButton > button {
-        background-image: var(--admin-accent);
-        box-shadow: 0 6px 28px rgba(109,40,217,0.4);
-        border-radius: var(--border-radius);
-        padding: 1.2rem 2.5rem;
-        font-size: 1.3rem;
-        font-weight: 700;
-        color: white;
-        width: 100%;
-        max-width: 600px;
-        margin: 1rem auto;
-        display: block;
-    }
-    .stButton > button:hover {
-        transform: scale(1.05);
-        filter: brightness(1.1);
-    }
-    .sidebar-nav-btn, .stSidebar .stButton > button {
-        background: linear-gradient(135deg, var(--accent1) 0%, var(--dash-pink) 100%);
+        background: var(--accent-gradient);
+        background-size: 200% 200%;
+        animation: gradientShift 5s ease infinite;
         color: white;
         font-weight: 600;
-        border-radius: var(--border-radius);
-        padding: 1rem;
-        margin: 0.6rem 0;
-        width: var(--sidebar-button-width);
-        height: var(--sidebar-button-height);
         border: none;
-        transition: transform var(--transition), box-shadow var(--transition);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.1rem;
-        box-sizing: border-box;
-        text-decoration: none;
+        border-radius: var(--border-radius);
+        padding: 0.75rem 1.5rem;
+        transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+        box-shadow: var(--shadow-sm);
     }
-    .sidebar-nav-btn:hover, .stSidebar .stButton > button:hover {
+    .stButton > button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(109,40,217,0.3);
+        box-shadow: var(--shadow-md);
     }
+    
+    /* Light theme sidebar styles */
+    .stSidebar {
+        width: var(--sidebar-width) !important;
+        background: #ffffff !important;
+        border-right: 1px solid #E5E7EB !important;
+        box-shadow: var(--shadow-sm) !important;
+    }
+    
+    .stSidebar > div > div {
+        padding: 1rem 0.5rem !important;
+    }
+    
+    .sidebar-nav-btn {
+        background: var(--accent-gradient) !important;
+        background-size: 200% 200% !important;
+        animation: gradientShift 5s ease infinite !important;
+        color: white !important;
+        border: none !important;
+        border-radius: var(--border-radius) !important;
+        padding: var(--sidebar-btn-padding) !important;
+        margin: var(--sidebar-btn-margin) !important;
+        width: 100% !important;
+        height: var(--sidebar-btn-height) !important;
+        transition: all var(--transition-fast) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 0.75rem !important;
+        font-size: 0.95rem !important;
+        font-weight: 500 !important;
+        box-shadow: var(--shadow-sm) !important;
+        text-decoration: none !important;
+        position: relative !important;
+        overflow: hidden !important;
+        cursor: pointer !important;
+    }
+    
+    .sidebar-nav-btn:hover {
+        transform: translateX(4px) !important;
+        box-shadow: var(--shadow-md) !important;
+        background: linear-gradient(135deg, #A855F7 0%, #6366F1 100%) !important;
+    }
+    
+    .sidebar-nav-btn:active {
+        transform: translateX(2px) !important;
+        box-shadow: var(--shadow-sm) !important;
+    }
+    
     .user-nav-btn {
-        background: linear-gradient(135deg, var(--accent2) 0%, #EAB308 100%);
+        background: var(--user-gradient) !important;
+        animation: gradientShift 5s ease infinite !important;
     }
-    .logout-btn, .stSidebar .stButton > button[key="logout_button"] {
-        color: #4C1D95;
-        font-weight: 700;
-        text-decoration: underline;
-        background: none;
-        box-shadow: none;
-        width: var(--sidebar-button-width);
-        height: var(--sidebar-button-height);
-        font-size: 1.1rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+    
+    .user-nav-btn:hover {
+        background: linear-gradient(135deg, #FDE047 0%, #10B981 100%) !important;
     }
-    .logout-btn:hover, .stSidebar .stButton > button[key="logout_button"]:hover {
-        color: #7C3AED;
+    
+    .action-btn {
+        background: var(--action-btn-bg) !important;
+        color: white !important;
+        border: none !important;
+        font-weight: 600 !important;
+        height: var(--action-btn-height) !important;
+        padding: var(--sidebar-btn-padding) !important;
+        margin: var(--sidebar-btn-margin) !important;
+        width: 100% !important;
+        border-radius: var(--border-radius) !important;
+        transition: all var(--transition-fast) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 0.5rem !important;
+        font-size: 0.95rem !important;
+        box-shadow: var(--shadow-sm) !important;
+    }
+    
+    .action-btn:hover {
+        background: var(--action-btn-bg-hover) !important;
+        transform: translateX(2px) !important;
+        box-shadow: var(--shadow-md) !important;
+    }
+    
+    .action-btn:active {
+        transform: translateX(0) !important;
+        box-shadow: var(--shadow-sm) !important;
+    }
+    
+    .sidebar-title {
+        color: var(--text-light) !important;
+        font-size: 1.25rem !important;
+        font-weight: 700 !important;
+        margin-bottom: 1.5rem !important;
+        padding-bottom: 0.5rem !important;
+        border-bottom: 1px solid #E5E7EB !important;
+        text-align: center !important;
+    }
+    
+    .user-info {
+        background: #F9FAFB !important;
+        border-radius: var(--border-radius) !important;
+        padding: 1rem !important;
+        margin-bottom: 1.5rem !important;
+        border: 1px solid #E5E7EB !important;
+        text-align: center !important;
+    }
+    
+    .user-info .avatar {
+        margin: 0 auto 0.75rem !important;
+    }
+    
+    .user-name {
+        color: var(--text-light) !important;
+        font-weight: 600 !important;
+        font-size: 1rem !important;
+        margin: 0 !important;
+    }
+    
+    .user-role {
+        color: #6B7280 !important;
+        font-size: 0.875rem !important;
+        margin: 0 !important;
     }
 }
+
 .container {
-    max-width: 600px;
-    margin: 4rem auto;
+    max-width: 480px;
+    margin: 6rem auto;
+    padding: 2.5rem;
     border-radius: var(--border-radius);
-    padding: 3rem 2.5rem;
-    text-align: center;
+    box-shadow: var(--shadow-md);
+    animation: fadeIn var(--transition-slow);
 }
-.avatar {
-    display: inline-flex;
-    width: 90px;
-    height: 90px;
-    margin: 0 auto 2.5rem;
-    border-radius: 50%;
-    font-size: 3rem;
-    font-weight: 800;
-    color: #fff;
-    background: var(--admin-accent);
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 6px 16px rgba(109,40,217,0.7);
-    transition: transform var(--transition);
-}
-.avatar:hover {
-    transform: scale(1.08) rotate(5deg);
-    box-shadow: 0 10px 24px rgba(109,40,217,0.9);
-}
-.avatar-placeholder {
-    font-size: 60px;
-    color: #9CA3AF;
-    margin-bottom: 2.5rem;
-}
-h2 {
-    margin-bottom: 1.2rem;
-    font-size: 2.4rem;
-}
-h3 {
-    margin-bottom: 1rem;
-    font-size: 1.6rem;
-    letter-spacing: 1px;
-}
-input[type=text], input[type=password] {
-    border-radius: var(--border-radius);
-    margin-bottom: 1.5rem;
-    width: 100%;
-    max-width: 600px;
-    margin-left: auto;
-    margin-right: auto;
-    display: block;
-}
-.stSelectbox > div > div > select {
-    border-radius: var(--border-radius);
-    padding: 1rem 1.5rem;
-    font-size: 1.2rem;
-    width: 100%;
-    max-width: 600px;
-    margin: 1rem auto;
-    display: block;
-}
-.form-error {
-    background: var(--error-bg);
-    color: #B91C1C;
-    padding: 1rem 1.5rem;
-    margin-bottom: 2rem;
-    border-radius: var(--border-radius);
-    font-weight: 600;
-    box-shadow: 0 0 8px #FCA5A5;
-    max-width: 400px;
-    margin-left: auto;
-    margin-right: auto;
-}
+
 .dash-container {
-    max-width: 900px;
-    margin: 3rem auto;
-    padding: 0 2rem;
-    text-align: center;
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
 }
+
 .dash-header {
     text-align: center;
-    margin-bottom: 2.5rem;
+    margin-bottom: 2rem;
 }
-.dash-metrics {
+
+.avatar {
     display: flex;
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1.5rem;
+    border-radius: 50%;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: white;
+    background: var(--accent-gradient);
+    align-items: center;
     justify-content: center;
-    flex-wrap: wrap;
-    margin-bottom: 2.5rem;
-    gap: 1.2rem;
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--transition-slow), box-shadow var(--transition-slow);
 }
+
+.avatar:hover {
+    transform: rotate(360deg);
+    box-shadow: var(--shadow-md);
+}
+
+h2 {
+    font-size: 1.875rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.form-error {
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1.5rem;
+    font-weight: 500;
+    animation: pulse var(--transition-slow);
+}
+
 .dash-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 3rem;
-    margin-top: 2.5rem;
-    justify-items: center;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
 }
+
 .card {
-    cursor: pointer;
-    width: 100%;
-    max-width: 400px;
-}
-.card.user {
-    border-left: 8px solid var(--accent2);
-}
-.card.admin {
-    border-left: 8px solid var(--accent1);
-}
-.card-accent {
-    color: white !important;
-    border: none !important;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.25);
-}
-.card-accent.user {
-    background: var(--user-accent);
-}
-.card-accent.admin {
-    background: var(--admin-accent);
-}
-.stMetric {
-    margin: 0 auto;
-}
-.stExpander {
-    width: 100%;
-    max-width: 900px;
-    margin: 0 auto;
-}
-.sidebar-card {
-    width: 100%;
-    max-width: 220px;
-    margin: 1.2rem auto;
-    border-radius: var(--border-radius);
     padding: 1.5rem;
+    border-radius: var(--border-radius);
     cursor: pointer;
-    transition: transform var(--transition), box-shadow var(--transition);
 }
-.sidebar-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+
+/* Ensure consistent button sizing for Streamlit buttons in sidebar */
+.stSidebar [data-testid="stButton"] > button {
+    height: var(--sidebar-btn-height) !important;
+    min-height: var(--sidebar-btn-height) !important;
+    padding: var(--sidebar-btn-padding) !important;
+    margin: var(--sidebar-btn-margin) !important;
+    border-radius: var(--border-radius) !important;
+    font-size: 0.95rem !important;
+    font-weight: 500 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 0.75rem !important;
+}
+
+/* Specific styling for action buttons in sidebar */
+.stSidebar [data-testid="stButton"][key*="back"] > button,
+.stSidebar [data-testid="stButton"][key="logout_button"] > button {
+    justify-content: center !important;
+    gap: 0.5rem !important;
+    background: var(--action-btn-bg) !important;
+    color: white !important;
+    height: var(--action-btn-height) !important;
+}
+
+.stSidebar [data-testid="stButton"][key*="back"] > button:hover,
+.stSidebar [data-testid="stButton"][key="logout_button"] > button:hover {
+    background: var(--action-btn-bg-hover) !important;
+    transform: translateX(2px) !important;
 }
 </style>
 """
@@ -508,45 +654,56 @@ def login_page():
 
 # --- Render Sidebar Cards for Admin Role ---
 def render_admin_sidebar_cards():
-    st.markdown("### Navigation")
+    st.markdown('<h3 class="sidebar-title">Navigation</h3>', unsafe_allow_html=True)
     for card_name, card in CARDS.items():
         if 'Admin' in card['roles']:
             if card_name == 'STRATEGY AUTOMATION':
                 st.markdown(
                     f"""
-                    <a href="https://strategiesautomationbysahil.streamlit.app/" target="_blank" class="sidebar-nav-btn" style="width: 100%; height: 56px; margin: 0.6rem 0; display: flex; align-items: center; justify-content: center;">
-                        {card['icon']} {card_name}
+                    <a href="https://strategiesautomationbysahil.streamlit.app/" target="_blank" class="sidebar-nav-btn" style="text-decoration: none;">
+                        <span style="font-size: 1.1em;">{card['icon']}</span>
+                        <span>{card_name}</span>
                     </a>
                     """,
                     unsafe_allow_html=True
                 )
             else:
-                if st.button(f"{card['icon']} {card_name}", key=f"open_admin_{card_name.replace(' ', '_').lower()}", help=card['description']):
-                    st.session_state.current_page = MODULES[card_name]
-                    st.rerun()
+                col1, col2 = st.columns([1, 8])
+                with col1:
+                    st.markdown(f"<span style='font-size: 1.1em;'>{card['icon']}</span>", unsafe_allow_html=True)
+                with col2:
+                    if st.button(card_name, key=f"open_admin_{card_name.replace(' ', '_').lower()}", 
+                               help=card['description'], use_container_width=True):
+                        st.session_state.current_page = MODULES[card_name]
+                        st.rerun()
 
 # --- Render Sidebar Cards for User Role ---
 def render_user_sidebar_cards():
-    st.markdown("### Navigation")
+    st.markdown('<h3 class="sidebar-title">Navigation</h3>', unsafe_allow_html=True)
     for card_name, card in CARDS.items():
         if 'User' in card['roles']:
             if card_name == 'STRATEGY AUTOMATION':
                 st.markdown(
                     f"""
-                    <a href="https://strategiesautomationbysahil.streamlit.app/" target="_blank" class="sidebar-nav-btn user-nav-btn" style="width: 100%; height: 56px; margin: 0.6rem 0; display: flex; align-items: center; justify-content: center;">
-                        {card['icon']} {card_name}
+                    <a href="https://strategiesautomationbysahil.streamlit.app/" target="_blank" class="sidebar-nav-btn user-nav-btn" style="text-decoration: none;">
+                        <span style="font-size: 1.1em;">{card['icon']}</span>
+                        <span>{card_name}</span>
                     </a>
                     """,
                     unsafe_allow_html=True
                 )
             else:
-                if st.button(f"{card['icon']} {card_name}", key=f"open_user_{card_name.replace(' ', '_').lower()}", help=card['description']):
-                    st.session_state.current_page = MODULES[card_name]
-                    st.rerun()
+                col1, col2 = st.columns([1, 8])
+                with col1:
+                    st.markdown(f"<span style='font-size: 1.1em;'>{card['icon']}</span>", unsafe_allow_html=True)
+                with col2:
+                    if st.button(card_name, key=f"open_user_{card_name.replace(' ', '_').lower()}", 
+                               help=card['description'], use_container_width=True):
+                        st.session_state.current_page = MODULES[card_name]
+                        st.rerun()
 
 # --- User Dashboard Pages ---
 def user_dashboard():
-    st.markdown('<div class="dash-container">', unsafe_allow_html=True)
     st.markdown('<div class="dash-header">', unsafe_allow_html=True)
     st.markdown(f'<div style="text-align:center;">{get_avatar(st.session_state.user_name)}</div>', unsafe_allow_html=True)
     st.markdown(f'<h2>Welcome, {st.session_state.user_name}!</h2>', unsafe_allow_html=True)
@@ -578,11 +735,8 @@ def user_dashboard():
         except Exception as e:
             st.error(f"Error in Hedge Manager: {e}")
 
-    st.markdown('</div>', unsafe_allow_html=True)
-
 # --- Admin Dashboard ---
 def admin_dashboard():
-    st.markdown('<div class="dash-container">', unsafe_allow_html=True)
     st.markdown('<div class="dash-header">', unsafe_allow_html=True)
     st.markdown(f'<div style="text-align:center;">{get_avatar(st.session_state.user_name)}</div>', unsafe_allow_html=True)
     st.markdown(f'<h2>Welcome, Admin {st.session_state.user_name}!</h2>', unsafe_allow_html=True)
@@ -634,28 +788,36 @@ def admin_dashboard():
         except Exception as e:
             st.error(f"Error in Hedge Manager: {e}")
 
-    st.markdown('</div>', unsafe_allow_html=True)
-
 # --- Main app control ---
 if not st.session_state.logged_in:
     login_page()
 else:
-    # Sidebar for navigation and logout
+    # Enhanced Sidebar with consistent layout
     with st.sidebar:
-        st.title(f"{st.session_state.role.capitalize()} Panel")
+        # Panel title
+        st.markdown(f'<h3 class="sidebar-title">{st.session_state.role.capitalize()} Panel</h3>', unsafe_allow_html=True)
+        
+        # User info section
+        st.markdown('<div class="user-info">', unsafe_allow_html=True)
         st.markdown(get_avatar(st.session_state.user_name), unsafe_allow_html=True)
-        st.write(f"Logged in as: {st.session_state.user_name}")
+        st.markdown(f'<p class="user-name">Logged in as: {st.session_state.user_name}</p>', unsafe_allow_html=True)
+        st.markdown(f'<p class="user-role">Role: {st.session_state.role.capitalize()}</p>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
+        # Navigation cards
         if st.session_state.role == 'user':
             render_user_sidebar_cards()
         elif st.session_state.role == 'admin':
             render_admin_sidebar_cards()
 
-        if st.button("🔙 Back to Dashboard", key=f"back_dashboard_{st.session_state.current_page}"):
+        # Action buttons with distinct styling
+        st.markdown('<div style="margin-top: 1rem;"></div>', unsafe_allow_html=True)  # Spacer
+        if st.button("🔙 Back to Dashboard", key=f"back_dashboard_{st.session_state.current_page}", 
+                    help="Return to main dashboard", use_container_width=True):
             st.session_state.current_page = 'dashboard'
             st.rerun()
 
-        if st.button("Logout", key='logout_button'):
+        if st.button("🚪 Logout", key='logout_button', help="Log out of the system"):
             st.session_state.logged_in = False
             st.session_state.user_name = ''
             st.session_state.role = 'user'
@@ -663,6 +825,7 @@ else:
             st.session_state.current_page = 'dashboard'
             st.rerun()
 
+    # Main content area
     if st.session_state.role == 'admin':
         admin_dashboard()
     else:
