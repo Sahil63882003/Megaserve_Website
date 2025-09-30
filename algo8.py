@@ -255,18 +255,14 @@ def run():
     st.info("👇 Upload your files and configure settings below to calculate PNL. If uploads fail (403 error), check the config.toml fix in the code comments.")
 
     # Input Section
-    # st.markdown("### ⚙️ Input Settings", unsafe_allow_html=True)
     with st.container():
-        # st.markdown('<div class="input-section">', unsafe_allow_html=True)
-        
-        # File Uploaders in a 2-column grid
         st.subheader("📁 Upload Files")
         col1, col2 = st.columns(2, gap="medium")
         with col1:
             uploaded_usersetting = st.file_uploader(
                 "User Settings CSV", 
                 type="csv", 
-                help="VS1 USERSETTING( EVE ).csv - Ensure file <1MB for testing",
+                help="VS1 USERSETTING( EVE ).csv - Ensure file <1MB for testing. Expected columns: User ID, Broker, Telegram ID(s).",
                 key="usersetting"
             )
             if uploaded_usersetting:
@@ -274,7 +270,7 @@ def run():
             uploaded_position = st.file_uploader(
                 "Position CSV", 
                 type="csv", 
-                help="VS1 Position(EOD).csv",
+                help="VS1 Position(EOD).csv. Expected columns: UserID, Symbol, Net Qty, Sell Avg Price, Buy Avg Price, Sell Qty, Buy Qty, Realized Profit, Unrealized Profit.",
                 key="position"
             )
             if uploaded_position:
@@ -284,7 +280,7 @@ def run():
             uploaded_orderbook = st.file_uploader(
                 "Order Book CSV", 
                 type="csv", 
-                help="VS1 ORDERBOOK.csv",
+                help="VS1 ORDERBOOK.csv. Expected columns: Exchange, Symbol, Exchange Time (format: DD-MMM-YYYY HH:MM:SS), User ID, Quantity, Avg Price, Transaction.",
                 key="orderbook"
             )
             if uploaded_orderbook:
@@ -292,7 +288,7 @@ def run():
             uploaded_bhav = st.file_uploader(
                 "Bhavcopy CSV", 
                 type="csv", 
-                help="opXXXXXX.csv (Bhavcopy)",
+                help="opXXXXXX.csv (Bhavcopy). Expected columns for NIFTY: CONTRACT_D, SETTLEMENT. For SENSEX: Market Summary Date, Expiry Date, Series Code, Close Price.",
                 key="bhavcopy"
             )
             if uploaded_bhav:
@@ -321,11 +317,34 @@ def run():
         if all([uploaded_usersetting, uploaded_orderbook, uploaded_position, uploaded_bhav]):
             with st.spinner("🔄 Processing your data... This may take a moment for large files."):
                 try:
-                    # Read uploaded files safely
-                    df1 = pd.read_csv(uploaded_usersetting, skiprows=6)
-                    df2 = pd.read_csv(uploaded_orderbook, index_col=False)
-                    df3 = pd.read_csv(uploaded_position)
-                    df_bhav = pd.read_csv(uploaded_bhav)
+                    # Read uploaded files safely with try-except
+                    try:
+                        df1 = pd.read_csv(uploaded_usersetting, skiprows=6)
+                    except Exception as e:
+                        st.error(f"❌ Error reading User Settings CSV: {str(e)}")
+                        return
+                    try:
+                        df2 = pd.read_csv(uploaded_orderbook, index_col=False)
+                    except Exception as e:
+                        st.error(f"❌ Error reading Order Book CSV: {str(e)}")
+                        return
+                    try:
+                        df3 = pd.read_csv(uploaded_position)
+                    except Exception as e:
+                        st.error(f"❌ Error reading Position CSV: {str(e)}")
+                        return
+                    try:
+                        df_bhav = pd.read_csv(uploaded_bhav)
+                    except Exception as e:
+                        st.error(f"❌ Error reading Bhavcopy CSV: {str(e)}")
+                        return
+
+                    # Check required columns in df1 (User Settings)
+                    required_df1_cols = ["User ID", "Broker"]
+                    missing_df1_cols = [col for col in required_df1_cols if col not in df1.columns]
+                    if missing_df1_cols:
+                        st.error(f"❌ Missing columns in User Settings CSV: {', '.join(missing_df1_cols)}")
+                        return
 
                     # Ensure Max Loss column exists in df1
                     if "Max Loss" not in df1.columns:
@@ -334,15 +353,18 @@ def run():
                     # Validate inputs
                     expiry_str = expiry.strftime("%d-%m-%Y")
                     if symbol not in ["NIFTY", "SENSEX"]:
-                        st.error("Invalid symbol. Please select 'NIFTY' or 'SENSEX'.")
-                        st.stop()
+                        st.error("❌ Invalid symbol. Please select 'NIFTY' or 'SENSEX'.")
+                        return
                     try:
                         pd.to_datetime(expiry_str, format="%d-%m-%Y")
                     except ValueError:
-                        st.error("Invalid expiry date format.")
-                        st.stop()
+                        st.error("❌ Invalid expiry date format. Use DD-MM-YYYY.")
+                        return
 
-                    # Process Symbol in df3
+                    # Process Symbol in df3 (Position)
+                    if "Symbol" not in df3.columns:
+                        st.error("❌ Missing 'Symbol' column in Position CSV.")
+                        return
                     df3["Symbol"] = df3["Symbol"].astype(str).str[-5:]+df3["Symbol"].astype(str).str[-8:-6]
 
                     # Split users
@@ -354,10 +376,15 @@ def run():
 
                     # Bhavcopy cleaning
                     if symbol=="NIFTY":
+                        required_bhav_cols = ["CONTRACT_D", "SETTLEMENT"]
+                        missing_bhav_cols = [col for col in required_bhav_cols if col not in df_bhav.columns]
+                        if missing_bhav_cols:
+                            st.error(f"❌ Missing columns in Bhavcopy CSV for NIFTY: {', '.join(missing_bhav_cols)}")
+                            return
                         df_bhav["Date"] = df_bhav["CONTRACT_D"].str.extract(r'(\d{2}-[A-Z]{3}-\d{4})')
                         df_bhav["Symbol"] = df_bhav["CONTRACT_D"].str.extract(r'^(.*?)(\d{2}-[A-Z]{3}-\d{4})')[0]
                         df_bhav["Strike_Type"] = df_bhav["CONTRACT_D"].str.extract(r'(PE\d+|CE\d+)$')
-                        df_bhav["Date"] = pd.to_datetime(df_bhav["Date"], format="%d-%b-%Y")
+                        df_bhav["Date"] = pd.to_datetime(df_bhav["Date"], format="%d-%b-%Y", errors="coerce")
                         df_bhav["Strike_Type"] = df_bhav["Strike_Type"].str.replace(r'^(PE|CE)(\d+)$', r'\2\1', regex=True)
                         target_symbol = "OPTIDXNIFTY"
                         df_bhav = df_bhav[(df_bhav["Date"] == pd.to_datetime(expiry_str, format="%d-%m-%Y")) & (df_bhav["Symbol"] == target_symbol)]
@@ -366,6 +393,11 @@ def run():
                         settelment = "SETTLEMENT"
                         symbols = "Symbol"
                     elif symbol=="SENSEX":
+                        required_bhav_cols = ["Market Summary Date", "Expiry Date", "Series Code", "Close Price"]
+                        missing_bhav_cols = [col for col in required_bhav_cols if col not in df_bhav.columns]
+                        if missing_bhav_cols:
+                            st.error(f"❌ Missing columns in Bhavcopy CSV for SENSEX: {', '.join(missing_bhav_cols)}")
+                            return
                         df_bhav["Date"] = pd.to_datetime(df_bhav["Market Summary Date"], format="%d %b %Y", errors="coerce")
                         df_bhav["Expiry Date"] = pd.to_datetime(df_bhav["Expiry Date"], format="%d %b %Y", errors="coerce")
                         df_bhav["Symbols"] = df_bhav["Series Code"].astype(str).str[-7:]
@@ -376,7 +408,16 @@ def run():
                         settelment = "Close Price"
                         symbols = "Symbols"
 
+                    # Check for NaT in df_bhav dates
+                    if df_bhav["Date"].isna().any():
+                        st.warning("⚠️ Some dates in Bhavcopy could not be parsed and have been set to NaT.")
+
                     # Not Noren Calculation
+                    required_df3_cols = ["UserID", "Net Qty", "Sell Avg Price", "Buy Avg Price", "Sell Qty", "Buy Qty", "Realized Profit", "Unrealized Profit"]
+                    missing_df3_cols = [col for col in required_df3_cols if col not in df3_not.columns]
+                    if missing_df3_cols:
+                        st.error(f"❌ Missing columns in Position CSV for Non-Noren: {', '.join(missing_df3_cols)}")
+                        return
                     dict2 = {}
                     dict3 = {}
                     for i in range(len(not_noren_user)):
@@ -413,13 +454,34 @@ def run():
                         dict3[not_noren_user[i]] = total_unrealized_pnl
 
                     # Noren Calculation
+                    required_df2_cols = ["Exchange", "Symbol", "Exchange Time", "User ID", "Quantity", "Avg Price", "Transaction"]
+                    missing_df2_cols = [col for col in required_df2_cols if col not in df2.columns]
+                    if missing_df2_cols:
+                        st.error(f"❌ Missing columns in Order Book CSV: {', '.join(missing_df2_cols)}")
+                        return
                     dict1 = {}
                     dict4 = {}
                     if symbol == "NIFTY":
                         df2 = df2[(df2["Exchange"] == "NFO") & (df2["Symbol"].str.contains("NIFTY"))]
                     df2["Symbol"] = df2["Symbol"].astype(str).str[-7:]
-                    df2["Exchange Time"] = pd.to_datetime(df2["Exchange Time"], format="%d-%b-%Y %H:%M:%S")
+
+                    # Handle invalid dates in Exchange Time
+                    df2["Exchange Time"] = df2["Exchange Time"].replace("01-Jan-0001 00:00:00", pd.NA)  # Replace known invalid
+                    df2["Exchange Time"] = pd.to_datetime(df2["Exchange Time"], format="%d-%b-%Y %H:%M:%S", errors="coerce")
+
+                    # Check for NaT values
+                    nat_count = df2["Exchange Time"].isna().sum()
+                    if nat_count > 0:
+                        st.warning(f"⚠️ Found {nat_count} invalid or unparsable dates in Exchange Time column. These rows have been excluded from calculations.")
+                        # Optionally display invalid rows for debugging
+                        st.dataframe(df2[df2["Exchange Time"].isna()][["Exchange Time", "User ID", "Symbol"]])
+
+                    # Drop rows with NaT in Exchange Time to avoid issues in sorting
+                    df2 = df2.dropna(subset=["Exchange Time"])
+
+                    # Sort by Exchange Time
                     df2 = df2.sort_values(by="Exchange Time")
+
                     for i in range(len(noren_user)):
                         df_user = df2[df2["User ID"] == noren_user[i]].copy()
                         grouped = df_user.groupby("Symbol")
@@ -518,7 +580,7 @@ def run():
                         maxloss_rows = []
                         for user in noren_user:
                             if user in dict1:
-                                x = df1.loc[df1["User ID"] == user, telegram_col].iloc[0]
+                                x = df1.loc[df1["User ID"] == user, telegram_col].iloc[0] if not df1.loc[df1["User ID"] == user, telegram_col].empty else 0
                                 realized_pnl = dict1[user]
                                 max_loss = (x * 0.7) + realized_pnl
                                 df1.loc[df1["User ID"] == user, "Max Loss"] = max_loss
@@ -531,7 +593,7 @@ def run():
 
                         for user in not_noren_user:
                             if user in dict2:
-                                x = df1.loc[df1["User ID"] == user, telegram_col].iloc[0]
+                                x = df1.loc[df1["User ID"] == user, telegram_col].iloc[0] if not df1.loc[df1["User ID"] == user, telegram_col].empty else 0
                                 realized_pnl = dict2[user]
                                 unrealized_pnl = dict3[user]
                                 max_loss = (x * 0.7) + realized_pnl + unrealized_pnl
@@ -676,7 +738,7 @@ def run():
                         if 'df3_not' in locals() and not df3_not.empty:
                             st.dataframe(df3_not.head(100), use_container_width=True)
                         else:
-                            st.info("No detailed position data available.")
+                            st.info("ℹ️ No detailed position data available.")
 
                     # Success message
                     st.success("✅ Calculation completed! Explore the insights above.")
@@ -694,3 +756,6 @@ def run():
         unsafe_allow_html=True
     )
     st.markdown('</div>', unsafe_allow_html=True)
+
+if __name__ == "__main__":
+    run()
