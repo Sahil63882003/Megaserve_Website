@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
@@ -387,7 +386,6 @@ tr, .stExpander, .metric-card {
 """, unsafe_allow_html=True)
 
 # Handle client secrets securely
-@st.cache_resource
 def get_client_secrets():
     """Load client secrets from Streamlit secrets (built-in and hidden)."""
     try:
@@ -400,7 +398,7 @@ def get_client_secrets():
         "token_uri": "https://oauth2.googleapis.com/token",
         "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
         "client_secret": "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",
-        "redirect_uris": ["http://localhost"]
+        "redirect_uris": ["http://localhost", "urn:ietf:wg:oauth:2.0:oob"]
     }
 }
         '''
@@ -413,45 +411,6 @@ def get_client_secrets():
         st.error(f"Client secrets loading failed: {e}. Please configure in .streamlit/secrets.toml.")
         logger.error(f"Client secrets loading failed: {e}")
         return None
-
-@st.cache_resource
-def authenticate_drive() -> GoogleDrive:
-    """Authenticate with Google Drive using built-in client secrets."""
-    client_json = get_client_secrets()
-    if not client_json or not os.path.isfile(client_json):
-        st.error("Client secrets file not found. Check configuration.")
-        logger.error("Client secrets file not found.")
-        st.stop()
-    try:
-        gauth = GoogleAuth()
-        gauth.settings['client_config_file'] = client_json
-        gauth.settings['oauth_scope'] = [
-            'https://www.googleapis.com/auth/drive.readonly',
-            'https://www.googleapis.com/auth/userinfo.email'
-        ]
-        gauth.LoadClientConfigFile(client_json)
-        gauth.LocalWebserverAuth()
-        drive = GoogleDrive(gauth)
-        # Fetch authenticated user's email
-        credentials = Credentials(
-            token=gauth.credentials.access_token,
-            refresh_token=gauth.credentials.refresh_token,
-            token_uri=gauth.credentials.token_uri,
-            client_id=gauth.credentials.client_id,
-            client_secret=gauth.credentials.client_secret
-        )
-        service = build('oauth2', 'v2', credentials=credentials)
-        user_info = service.userinfo().get().execute()
-        email = user_info.get('email', 'Unknown')
-        logger.info(f"Authenticated as: {email}")
-        st.markdown(f'<div class="success-box">✅ Authenticated as: {email}</div>', unsafe_allow_html=True)
-        os.unlink(client_json)
-        logger.info(f"Deleted temporary client secrets file: {client_json}")
-        return drive
-    except Exception as e:
-        st.error(f"Google Drive authentication failed: {e}")
-        logger.error(f"Authentication failed: {e}")
-        st.stop()
 
 def extract_folder_id(drive_link: str) -> str:
     """Extract folder ID from Google Drive link."""
@@ -815,14 +774,66 @@ def main_app():
         fid = extract_folder_id(folder_link)
         st.markdown(f'<div class="success-box">✅ Folder ID extracted: {fid}</div>', unsafe_allow_html=True)
 
-        # Authenticate
-        if st.button("🔑 Authenticate Google Drive", type="primary"):
-            with st.spinner("Authenticating... A browser tab may open for OAuth."):
-                drive_client = authenticate_drive()
-                st.session_state.drive_client = drive_client
-                st.markdown('<div class="success-box">✅ Authentication successful!</div>', unsafe_allow_html=True)
+        # Initialize session state for auth
         if "drive_client" not in st.session_state:
-            st.markdown('<div class="warning-box">⚠️ Click "Authenticate Google Drive" to connect.</div>', unsafe_allow_html=True)
+            st.session_state.drive_client = None
+        if "auth_step" not in st.session_state:
+            st.session_state.auth_step = "initial"
+        if "gauth" not in st.session_state:
+            st.session_state.gauth = None
+        if "client_json" not in st.session_state:
+            st.session_state.client_json = None
+
+        # Authenticate logic
+        if st.session_state.drive_client is None:
+            if st.session_state.auth_step == "initial":
+                if st.button("🔑 Authenticate Google Drive", type="primary"):
+                    client_json = get_client_secrets()
+                    if not client_json or not os.path.isfile(client_json):
+                        st.error("Client secrets file not found. Check configuration.")
+                        logger.error("Client secrets file not found.")
+                        st.stop()
+                    st.session_state.client_json = client_json
+                    gauth = GoogleAuth()
+                    gauth.settings['client_config_file'] = client_json
+                    gauth.settings['oauth_scope'] = [
+                        'https://www.googleapis.com/auth/drive.readonly',
+                        'https://www.googleapis.com/auth/userinfo.email'
+                    ]
+                    gauth.LoadClientConfigFile(client_json)
+                    gauth.flow.redirect_uri = 'urn:ietf:wg:oauth:2.0:oob'
+                    auth_url = gauth.GetAuthUrl()
+                    st.session_state.gauth = gauth
+                    st.markdown(f'<div class="success-box">Please visit this URL to authorize the app: <a href="{auth_url}" target="_blank">{auth_url}</a></div>', unsafe_allow_html=True)
+                    st.session_state.auth_step = "waiting_for_code"
+            elif st.session_state.auth_step == "waiting_for_code":
+                code = st.text_input("Enter the authorization code here:")
+                if st.button("Submit Code", type="primary"):
+                    try:
+                        gauth = st.session_state.gauth
+                        gauth.Auth(code)
+                        drive = GoogleDrive(gauth)
+                        st.session_state.drive_client = drive
+                        # Fetch authenticated user's email
+                        credentials = Credentials(
+                            token=gauth.credentials.access_token,
+                            refresh_token=gauth.credentials.refresh_token,
+                            token_uri=gauth.credentials.token_uri,
+                            client_id=gauth.credentials.client_id,
+                            client_secret=gauth.credentials.client_secret
+                        )
+                        service = build('oauth2', 'v2', credentials=credentials)
+                        user_info = service.userinfo().get().execute()
+                        email = user_info.get('email', 'Unknown')
+                        logger.info(f"Authenticated as: {email}")
+                        st.markdown(f'<div class="success-box">✅ Authenticated as: {email}</div>', unsafe_allow_html=True)
+                        os.unlink(st.session_state.client_json)
+                        logger.info(f"Deleted temporary client secrets file: {st.session_state.client_json}")
+                        st.session_state.auth_step = "complete"
+                    except Exception as e:
+                        st.error(f"Google Drive authentication failed: {e}")
+                        logger.error(f"Authentication failed: {e}")
+            st.markdown('<div class="warning-box">⚠️ Complete authentication to proceed.</div>', unsafe_allow_html=True)
             st.stop()
 
         drive = st.session_state.drive_client
@@ -854,8 +865,6 @@ def run():
         st.error("❌ Admin access required for this module.")
         logger.error("Access denied: User is not admin")
         st.stop()
-    if 'drive_client' not in st.session_state:
-        st.session_state.drive_client = None
     main_app()
 
 if __name__ == "__main__":
