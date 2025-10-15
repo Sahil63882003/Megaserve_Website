@@ -14,6 +14,7 @@ from pydrive2.auth import GoogleAuth
 from pydrive2.drive import GoogleDrive
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
+from google_auth_oauthlib.flow import InstalledAppFlow
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, filename="app.log")
@@ -386,11 +387,11 @@ def get_client_secrets():
         client_config = {
             "installed": {
                 "client_id": st.secrets["google"]["client_id"],
+                "client_secret": st.secrets["google"]["client_secret"],
                 "project_id": st.secrets["google"]["project_id"],
                 "auth_uri": st.secrets["google"]["auth_uri"],
                 "token_uri": st.secrets["google"]["token_uri"],
                 "auth_provider_x509_cert_url": st.secrets["google"]["auth_provider_x509_cert_url"],
-                "client_secret": st.secrets["google"]["client_secret"],
                 "redirect_uris": st.secrets["google"]["redirect_uris"]
             }
         }
@@ -400,7 +401,7 @@ def get_client_secrets():
         logger.info(f"Created temporary client secrets file: {temp_path}")
         return temp_path
     except Exception as e:
-        st.error(f"Client secrets loading failed: {e}. Please configure in .streamlit/secrets.toml.")
+        st.error(f"Client secrets loading failed: {e}. Please configure in Streamlit Cloud secrets or .streamlit/secrets.toml.")
         logger.error(f"Client secrets loading failed: {e}")
         return None
 
@@ -408,29 +409,28 @@ def authenticate_drive():
     """Authenticate with Google Drive using manual OAuth flow."""
     client_json = get_client_secrets()
     if not client_json or not os.path.isfile(client_json):
-        st.error("Client secrets file not found. Check configuration.")
+        st.error("Client secrets file not found. Check Streamlit secrets configuration.")
         logger.error("Client secrets file not found.")
         st.stop()
 
     if "auth_step" not in st.session_state:
         st.session_state.auth_step = "initial"
-    if "gauth" not in st.session_state:
-        st.session_state.gauth = None
     if "client_json" not in st.session_state:
         st.session_state.client_json = None
 
     if st.session_state.auth_step == "initial":
         try:
-            gauth = GoogleAuth()
-            gauth.settings['client_config_file'] = client_json
-            gauth.settings['oauth_scope'] = [
-                'https://www.googleapis.com/auth/drive.readonly',
-                'https://www.googleapis.com/auth/userinfo.email'
-            ]
-            gauth.LoadClientConfigFile(client_json)
-            gauth.flow.redirect_uri = 'urn:ietf:wg:oauth:2.0:oob'
-            auth_url = gauth.GetAuthUrl()
-            st.session_state.gauth = gauth
+            # Initialize OAuth flow using google-auth-oauthlib
+            flow = InstalledAppFlow.from_client_secrets_file(
+                client_json,
+                scopes=[
+                    'https://www.googleapis.com/auth/drive.readonly',
+                    'https://www.googleapis.com/auth/userinfo.email'
+                ],
+                redirect_uri='urn:ietf:wg:oauth:2.0:oob'
+            )
+            auth_url, _ = flow.authorization_url(prompt='consent')
+            st.session_state.flow = flow
             st.session_state.client_json = client_json
             st.markdown(
                 f'<div class="success-box">Please visit this URL to authorize the app: <a href="{auth_url}" target="_blank">{auth_url}</a></div>',
@@ -446,17 +446,14 @@ def authenticate_drive():
         code = st.text_input("Enter the authorization code here:", key="auth_code")
         if st.button("Submit Code", type="primary"):
             try:
-                gauth = st.session_state.gauth
-                gauth.Auth(code)
+                flow = st.session_state.flow
+                flow.fetch_token(code=code)
+                credentials = flow.credentials
+                # Initialize PyDrive2 with credentials
+                gauth = GoogleAuth()
+                gauth.credentials = credentials
                 drive = GoogleDrive(gauth)
                 # Fetch authenticated user's email
-                credentials = Credentials(
-                    token=gauth.credentials.access_token,
-                    refresh_token=gauth.credentials.refresh_token,
-                    token_uri=gauth.credentials.token_uri,
-                    client_id=gauth.credentials.client_id,
-                    client_secret=gauth.credentials.client_secret
-                )
                 service = build('oauth2', 'v2', credentials=credentials)
                 user_info = service.userinfo().get().execute()
                 email = user_info.get('email', 'Unknown')
