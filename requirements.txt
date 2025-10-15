@@ -5,7 +5,9 @@ openpyxl>=3.1.2
 altair>=5.4.1
 google-auth-oauthlib>=1.2.1
 plotly>=5.24.0
+pydrive2==1.20.0
 google-api-python-client>=2.149.0
+
 
 
 
