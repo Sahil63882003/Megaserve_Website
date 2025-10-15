@@ -858,3 +858,6 @@ def run():
         logger.error("Access denied: User is not admin")
         st.stop()
     main_app()
+
+if __name__ == "__main__":
+    run()
