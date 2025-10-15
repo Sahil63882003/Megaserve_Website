@@ -11,9 +11,9 @@ import usersetting_compare
 import algo19
 import algo8
 import summary_checker
-import hedge  # Import the Hedge Manager module
+import hedge
 
-# Page configuration for consistent layout across environments
+# Page configuration
 st.set_page_config(
     page_title="Dashboard",
     page_icon="📊",
@@ -98,7 +98,7 @@ def get_avatar(name):
         '''
     return '<div class="avatar-placeholder">👤</div>'
 
-# --- Enhanced CSS styles with improved sidebar layout ---
+# --- Enhanced CSS styles ---
 CSS = """
 <style>
 :root {
@@ -218,7 +218,6 @@ body {
         padding: 1rem 0.5rem !important;
     }
     
-    /* Standard Sidebar Navigation Buttons */
     .sidebar-nav-btn {
         background: var(--accent-gradient) !important;
         background-size: 200% 200% !important;
@@ -255,7 +254,6 @@ body {
         box-shadow: var(--shadow-sm) !important;
     }
     
-    /* User-specific navigation buttons */
     .user-nav-btn {
         background: var(--user-gradient) !important;
         animation: gradientShift 5s ease infinite !important;
@@ -265,7 +263,6 @@ body {
         background: linear-gradient(135deg, #FDE047 0%, #10B981 100%) !important;
     }
     
-    /* Action Buttons (Back to Dashboard and Logout) */
     .action-btn {
         background: var(--action-btn-bg) !important;
         color: white !important;
@@ -380,7 +377,6 @@ body {
         box-shadow: var(--shadow-md);
     }
     
-    /* Light theme sidebar styles */
     .stSidebar {
         width: var(--sidebar-width) !important;
         background: #ffffff !important;
@@ -575,7 +571,6 @@ h2 {
     cursor: pointer;
 }
 
-/* Ensure consistent button sizing for Streamlit buttons in sidebar */
 .stSidebar [data-testid="stButton"] > button {
     height: var(--sidebar-btn-height) !important;
     min-height: var(--sidebar-btn-height) !important;
@@ -590,7 +585,6 @@ h2 {
     gap: 0.75rem !important;
 }
 
-/* Specific styling for action buttons in sidebar */
 .stSidebar [data-testid="stButton"][key*="back"] > button,
 .stSidebar [data-testid="stButton"][key="logout_button"] > button {
     justify-content: center !important;
@@ -616,8 +610,9 @@ if 'logged_in' not in st.session_state:
     st.session_state.user_name = ''
     st.session_state.role = 'user'
     st.session_state.error = ''
+    st.session_state.current_page = 'dashboard'  # Ensure initial page is dashboard
 if 'current_page' not in st.session_state:
-    st.session_state.current_page = 'dashboard'
+    st.session_state.current_page = 'dashboard'  # Redundant but ensures initialization
 
 # --- Login page ---
 def login_page():
@@ -655,7 +650,8 @@ def login_page():
                 st.session_state.user_name = name.strip()
                 st.session_state.role = role.lower()
                 st.session_state.error = ''
-                st.session_state.current_page = 'dashboard'
+                st.session_state.current_page = 'dashboard'  # Reset to dashboard on login
+                st.session_state.drive_client = None  # Clear any previous drive client
                 st.rerun()
 
 # --- Render Sidebar Cards for Admin Role ---
@@ -711,133 +707,131 @@ def render_user_sidebar_cards():
 
 # --- User Dashboard Pages ---
 def user_dashboard():
-    st.markdown('<div class="dash-header">', unsafe_allow_html=True)
-    st.markdown(f'<div style="text-align:center;">{get_avatar(st.session_state.user_name)}</div>', unsafe_allow_html=True)
-    st.markdown(f'<h2>Welcome, {st.session_state.user_name}!</h2>', unsafe_allow_html=True)
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    st.markdown(f'<p style="text-align:center; font-weight:600; font-style:italic;">Last updated at {now}</p>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    with st.container():
+        st.markdown('<div class="dash-header">', unsafe_allow_html=True)
+        st.markdown(f'<div style="text-align:center;">{get_avatar(st.session_state.user_name)}</div>', unsafe_allow_html=True)
+        st.markdown(f'<h2>Welcome, {st.session_state.user_name}!</h2>', unsafe_allow_html=True)
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        st.markdown(f'<p style="text-align:center; font-weight:600; font-style:italic;">Last updated at {now}</p>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    # Page content based on selection
-    if st.session_state.current_page == 'dashboard':
-        st.subheader("Your Activity Trend User")
-    elif st.session_state.current_page == 'hedge_automation':
-        try:
-            hedge_automation.run()
-        except Exception as e:
-            st.error(f"Error in Hedge Automation: {e}")
-    elif st.session_state.current_page == 'varpro':
-        try:
-            varpro.run()
-        except Exception as e:
-            st.error(f"Error in VAR Pro: {e}")
-    elif st.session_state.current_page == 'summary_automation':
-        try:
-            Summary_Automation.run()
-        except Exception as e:
-            st.error(f"Error in Summary Automation: {e}")
-    elif st.session_state.current_page == 'hedge':
-        try:
-            hedge.run()
-        except Exception as e:
-            st.error(f"Error in Hedge Manager: {e}")
+        if st.session_state.current_page == 'dashboard':
+            st.subheader("Your Activity Trend User")
+        elif st.session_state.current_page == 'hedge_automation':
+            try:
+                hedge_automation.run()
+            except Exception as e:
+                st.error(f"Error in Hedge Automation: {e}")
+        elif st.session_state.current_page == 'varpro':
+            try:
+                varpro.run()
+            except Exception as e:
+                st.error(f"Error in VAR Pro: {e}")
+        elif st.session_state.current_page == 'summary_automation':
+            try:
+                Summary_Automation.run()
+            except Exception as e:
+                st.error(f"Error in Summary Automation: {e}")
+        elif st.session_state.current_page == 'hedge':
+            try:
+                hedge.run()
+            except Exception as e:
+                st.error(f"Error in Hedge Manager: {e}")
 
 # --- Admin Dashboard ---
 def admin_dashboard():
-    st.markdown('<div class="dash-header">', unsafe_allow_html=True)
-    st.markdown(f'<div style="text-align:center;">{get_avatar(st.session_state.user_name)}</div>', unsafe_allow_html=True)
-    st.markdown(f'<h2>Welcome, Admin {st.session_state.user_name}!</h2>', unsafe_allow_html=True)
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    st.markdown(f'<p style="text-align:center; font-weight:600; font-style:italic;">Last updated at {now}</p>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    with st.container():
+        st.markdown('<div class="dash-header">', unsafe_allow_html=True)
+        st.markdown(f'<div style="text-align:center;">{get_avatar(st.session_state.user_name)}</div>', unsafe_allow_html=True)
+        st.markdown(f'<h2>Welcome, Admin {st.session_state.user_name}!</h2>', unsafe_allow_html=True)
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        st.markdown(f'<p style="text-align:center; font-weight:600; font-style:italic;">Last updated at {now}</p>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    # Page content based on selection
-    if st.session_state.current_page == 'dashboard':
-        st.subheader("Your Activity Trend Admin")
-    elif st.session_state.current_page == 'hedge_automation':
-        try:
-            hedge_automation.run()
-        except Exception as e:
-            st.error(f"Error in Hedge Automation: {e}")
-    elif st.session_state.current_page == 'varpro':
-        try:
-            varpro.run()
-        except Exception as e:
-            st.error(f"Error in VAR Pro: {e}")
-    elif st.session_state.current_page == 'summary_automation':
-        try:
-            Summary_Automation.run()
-        except Exception as e:
-            st.error(f"Error in Summary Automation: {e}")
-    elif st.session_state.current_page == 'jainam':
-        try:
-            jainam.run()
-        except Exception as e:
-            st.error(f"Error in Jainam: {e}")
-    elif st.session_state.current_page == 'usersetting':
-        try:
-            usersetting_compare.run()
-        except Exception as e:
-            st.error(f"Error in User Settings: {e}")
-    elif st.session_state.current_page == 'algo19':
-        try:
-            algo19.run()
-        except Exception as e:
-            st.error(f"Error in Algo19: {e}")
-    elif st.session_state.current_page == 'algo8':
-        try:
-            algo8.run()
-        except Exception as e:
-            st.error(f"Error in Algo 8 Calculator: {e}")
-    elif st.session_state.current_page == 'hedge':
-        try:
-            hedge.run()
-        except Exception as e:
-            st.error(f"Error in Hedge Manager: {e}")
-    elif st.session_state.current_page == 'summary_checker':
-        try:
-            summary_checker.run()
-        except Exception as e:
-            st.error(f"Error in Summary Checker: {e}")
+        if st.session_state.current_page == 'dashboard':
+            st.subheader("Your Activity Trend Admin")
+        elif st.session_state.current_page == 'hedge_automation':
+            try:
+                hedge_automation.run()
+            except Exception as e:
+                st.error(f"Error in Hedge Automation: {e}")
+        elif st.session_state.current_page == 'varpro':
+            try:
+                varpro.run()
+            except Exception as e:
+                st.error(f"Error in VAR Pro: {e}")
+        elif st.session_state.current_page == 'summary_automation':
+            try:
+                Summary_Automation.run()
+            except Exception as e:
+                st.error(f"Error in Summary Automation: {e}")
+        elif st.session_state.current_page == 'jainam':
+            try:
+                jainam.run()
+            except Exception as e:
+                st.error(f"Error in Jainam: {e}")
+        elif st.session_state.current_page == 'usersetting':
+            try:
+                usersetting_compare.run()
+            except Exception as e:
+                st.error(f"Error in User Settings: {e}")
+        elif st.session_state.current_page == 'algo19':
+            try:
+                algo19.run()
+            except Exception as e:
+                st.error(f"Error in Algo19: {e}")
+        elif st.session_state.current_page == 'algo8':
+            try:
+                algo8.run()
+            except Exception as e:
+                st.error(f"Error in Algo 8 Calculator: {e}")
+        elif st.session_state.current_page == 'hedge':
+            try:
+                hedge.run()
+            except Exception as e:
+                st.error(f"Error in Hedge Manager: {e}")
+        elif st.session_state.current_page == 'summary_checker':
+            try:
+                summary_checker.run()
+            except Exception as e:
+                st.error(f"Error in Summary Checker: {e}")
 
 # --- Main app control ---
 if not st.session_state.logged_in:
     login_page()
 else:
-    # Enhanced Sidebar with consistent layout
     with st.sidebar:
-        # Panel title
         st.markdown(f'<h3 class="sidebar-title">{st.session_state.role.capitalize()} Panel</h3>', unsafe_allow_html=True)
         
-        # User info section
         st.markdown('<div class="user-info">', unsafe_allow_html=True)
         st.markdown(get_avatar(st.session_state.user_name), unsafe_allow_html=True)
         st.markdown(f'<p class="user-name">Logged in as: {st.session_state.user_name}</p>', unsafe_allow_html=True)
         st.markdown(f'<p class="user-role">Role: {st.session_state.role.capitalize()}</p>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # Navigation cards
         if st.session_state.role == 'user':
             render_user_sidebar_cards()
         elif st.session_state.role == 'admin':
             render_admin_sidebar_cards()
 
-        # Action buttons with distinct styling
-        st.markdown('<div style="margin-top: 1rem;"></div>', unsafe_allow_html=True)  # Spacer
+        st.markdown('<div style="margin-top: 1rem;"></div>', unsafe_allow_html=True)
         if st.button("🔙 Back to Dashboard", key=f"back_dashboard_{st.session_state.current_page}", 
                     help="Return to main dashboard", use_container_width=True):
             st.session_state.current_page = 'dashboard'
             st.rerun()
 
         if st.button("🚪 Logout", key='logout_button', help="Log out of the system"):
+            # Clear all session state to reset application
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
             st.session_state.logged_in = False
             st.session_state.user_name = ''
             st.session_state.role = 'user'
             st.session_state.error = ''
             st.session_state.current_page = 'dashboard'
+            st.session_state.drive_client = None
             st.rerun()
 
-    # Main content area
     if st.session_state.role == 'admin':
         admin_dashboard()
     else:
