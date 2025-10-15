@@ -9,11 +9,9 @@ import logging
 from typing import Dict, List, Set
 import streamlit as st
 import pandas as pd
-import json
 from pydrive2.auth import GoogleAuth
 from pydrive2.drive import GoogleDrive
 from google.oauth2 import service_account
-from googleapiclient.discovery import build
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, filename="app.log")
@@ -417,7 +415,6 @@ def authenticate_drive():
         gauth.credentials = credentials
         drive = GoogleDrive(gauth)
         logger.info("Authenticated with Google Drive using service account.")
-        # Fetch service account email for confirmation
         st.markdown(f'<div class="success-box">✅ Authenticated as service account: {credentials.service_account_email}</div>', unsafe_allow_html=True)
         return drive
     except Exception as e:
@@ -456,7 +453,7 @@ def check_summary_users(drive: GoogleDrive, folder_id: str, ref_lookup: Dict[str
     except Exception as e:
         error_msg = f"Failed to access folder: {str(e)}"
         if "insufficient permissions" in str(e).lower():
-            error_msg += " Ensure the folder is shared with the authenticated service account."
+            error_msg += " Ensure the folder is shared with the service account."
         results_container.markdown(f'<div class="error-box">❌ {error_msg}</div>', unsafe_allow_html=True)
         logger.error(f"Failed to access folder {folder_id}: {e}")
         return
