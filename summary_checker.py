@@ -13,17 +13,11 @@ from pydrive2.auth import GoogleAuth
 from pydrive2.drive import GoogleDrive
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
+import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, filename="app.log")
 logger = logging.getLogger(__name__)
-
-# Streamlit page config for modern UI
-st.set_page_config(
-    page_title="Google Drive Summary Checker",
-    page_icon="🔍",
-    layout="wide",
-)
 
 # Ultra-modern UI with 2025 trends: centered content, professional design, clear section separation
 st.markdown("""
@@ -387,28 +381,26 @@ tr, .stExpander, .metric-card {
 
 # Handle client secrets securely
 def get_client_secrets():
-    """Load client secrets from Streamlit secrets (built-in and hidden)."""
+    """Load client secrets from Streamlit secrets."""
     try:
-        client_json_content = '''
-{
-    "installed": {
-        "client_id": "597141289794-q48ejlatd71q0el3tko70chje91rkbu2.apps.googleusercontent.com",
-        "project_id": "upheld-producer-454005-t3",
-        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-        "token_uri": "https://oauth2.googleapis.com/token",
-        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-        "client_secret": "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",
-        "redirect_uris": ["http://localhost", "urn:ietf:wg:oauth:2.0:oob"]
-    }
-}
-        '''
+        client_config = {
+            "installed": {
+                "client_id": st.secrets["google"]["client_id"],
+                "project_id": st.secrets["google"]["project_id"],
+                "auth_uri": st.secrets["google"]["auth_uri"],
+                "token_uri": st.secrets["google"]["token_uri"],
+                "auth_provider_x509_cert_url": st.secrets["google"]["auth_provider_x509_cert_url"],
+                "client_secret": st.secrets["google"]["client_secret"],
+                "redirect_uris": st.secrets["google"]["redirect_uris"]
+            }
+        }
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-            f.write(client_json_content)
+            json.dump(client_config, f)
             temp_path = f.name
         logger.info(f"Created temporary client secrets file: {temp_path}")
         return temp_path
     except Exception as e:
-        st.error(f"Client secrets loading failed: {e}. Please configure in .streamlit/secrets.toml.")
+        st.error(f"Client secrets loading failed: {e}. Please configure in Streamlit secrets.")
         logger.error(f"Client secrets loading failed: {e}")
         return None
 
@@ -866,6 +858,3 @@ def run():
         logger.error("Access denied: User is not admin")
         st.stop()
     main_app()
-
-if __name__ == "__main__":
-    run()
