@@ -10,6 +10,7 @@ import jainam
 import usersetting_compare
 import algo19
 import algo8
+import summary_checker
 import hedge  # Import the Hedge Manager module
 
 # Page configuration for consistent layout across environments
@@ -66,6 +67,11 @@ CARDS = {
         'description': 'Manage hedge operations.',
         'roles': ['Admin', 'User'],
         'icon': '🛡️'
+    },
+    'SUMMARY CHECKER': {
+        'description': 'Validate user mappings in Google Drive summaries.',
+        'roles': ['Admin'],
+        'icon': '🔍'
     }
 }
 
@@ -77,7 +83,8 @@ MODULES = {
     'USERSETTING': 'usersetting',
     'ALGO19 REALIZED AND UNREALIZED': 'algo19',
     'ALGO 8 CALCULATOR': 'algo8',
-    'HEDGE MANAGER': 'hedge'
+    'HEDGE MANAGER': 'hedge',
+    'SUMMARY CHECKER': 'summary_checker'
 }
 
 # --- Utility functions ---
@@ -289,7 +296,6 @@ body {
         box-shadow: var(--shadow-sm) !important;
     }
     
-    /* Navigation title styling */
     .sidebar-title {
         color: var(--text-dark) !important;
         font-size: 1.25rem !important;
@@ -657,10 +663,11 @@ def render_admin_sidebar_cards():
     st.markdown('<h3 class="sidebar-title">Navigation</h3>', unsafe_allow_html=True)
     for card_name, card in CARDS.items():
         if 'Admin' in card['roles']:
-            if card_name == 'STRATEGY AUTOMATION':
+            if card_name in ['STRATEGY AUTOMATION']:
+                target_url = "https://strategiesautomationbysahil.streamlit.app/"
                 st.markdown(
                     f"""
-                    <a href="https://strategiesautomationbysahil.streamlit.app/" target="_blank" class="sidebar-nav-btn" style="text-decoration: none;">
+                    <a href="{target_url}" target="_blank" class="sidebar-nav-btn" style="text-decoration: none;">
                         <span style="font-size: 1.1em;">{card['icon']}</span>
                         <span>{card_name}</span>
                     </a>
@@ -787,6 +794,11 @@ def admin_dashboard():
             hedge.run()
         except Exception as e:
             st.error(f"Error in Hedge Manager: {e}")
+    elif st.session_state.current_page == 'summary_checker':
+        try:
+            summary_checker.run()
+        except Exception as e:
+            st.error(f"Error in Summary Checker: {e}")
 
 # --- Main app control ---
 if not st.session_state.logged_in:
