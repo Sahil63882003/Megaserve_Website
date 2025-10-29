@@ -30,7 +30,15 @@ def run():
         st.session_state.output_additional_excel = None
         st.session_state.expiry_str = None
 
-    # Updated Custom CSS for modern, professional, and aligned design
+    # === NEW: Session state for Morning Position Verification ===
+    if 'morning_verify_done' not in st.session_state:
+        st.session_state.morning_verify_done = False
+        st.session_state.morning_result_df = None
+        st.session_state.morning_check1 = False
+        st.session_state.morning_check2 = 0
+        st.session_state.morning_check3 = 0.0
+
+   # Updated Custom CSS for modern, professional, and aligned design
     st.markdown("""
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -296,7 +304,12 @@ def run():
     st.markdown("<p class='subtitle'>Calculate Realized & Unrealized PNL for NIFTY/SENSEX Options with precision.</p>", unsafe_allow_html=True)
     st.info("👇 Upload your files and configure settings below to calculate PNL. If uploads fail (403 error), check the config.toml fix in the code comments.")
 
-    tabs = st.tabs(["💼 Full PNL Calculation", "⚙️ Noren Realized PNL Only"])
+    # === TABS ===
+    tabs = st.tabs([
+        "Full PNL Calculation",
+        "Noren Realized PNL Only",
+        "Morning Position Verification"  # NEW TAB
+    ])
 
     with tabs[0]:
         # Input Section
@@ -1193,7 +1206,194 @@ def run():
                         st.exception(e)
             else:
                 st.warning("⚠️ Please upload User Settings and Order Book files to proceed.")
+    # ========================================
+    # TAB 3: Morning Position Verification
+    # ========================================
+    with tabs[2]:
+        st.markdown('<div class="section-card">', unsafe_allow_html=True)
+        st.subheader("Morning Position vs Noren Unrealized Data Verification")
 
+        col1, col2 = st.columns(2)
+        with col1:
+            uploaded_additional_excel = st.file_uploader(
+                "A8 Additional Data (XLSX)",
+                type="xlsx",
+                help="Upload 'A8 23 OCT 25 Additional Data (3).xlsx' → Contains 'Noren UnRealized Data' sheet",
+                key="additional_excel"
+            )
+            if uploaded_additional_excel:
+                st.success("Additional Data XLSX uploaded")
+
+            uploaded_usersetting_mor = st.file_uploader(
+                "User Settings CSV (EVE)",
+                type="csv",
+                help="VS1 20 OCT 2025 USERSETTING( EVE ).csv",
+                key="usersetting_mor"
+            )
+            if uploaded_usersetting_mor:
+                st.success("User Settings CSV uploaded")
+
+        with col2:
+            uploaded_position_mor = st.file_uploader(
+                "Morning Position CSV",
+                type="csv",
+                help="VS1 23 OCT 2025 Position(MOR).csv",
+                key="position_mor"
+            )
+            if uploaded_position_mor:
+                st.success("Morning Position CSV uploaded")
+
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        if st.button("Verify Morning Positions", use_container_width=True, key="verify_morning"):
+            if all([uploaded_additional_excel, uploaded_usersetting_mor, uploaded_position_mor]):
+                with st.spinner("Verifying morning positions..."):
+                    try:
+                        # ---------- 1. Load files ----------
+                        df1 = pd.read_excel(uploaded_additional_excel, sheet_name="Noren UnRealized Data")
+                        df2 = pd.read_csv(uploaded_usersetting_mor, skiprows=6)
+                        df3 = pd.read_csv(uploaded_position_mor)
+
+                        # ---------- 2. Filter Noren users ----------
+                        df2 = df2[df2["Broker"] == "MasterTrust_Noren"]
+                        lst = list(df2["User ID"])
+
+                        # ---------- 3. Prepare morning-position ----------
+                        df3 = df3[df3["UserID"].isin(lst)].copy()
+                        df3["Symbol"] = df3["Symbol"].astype(str).str[-7:]
+                        df3["Avg_Price"] = df3["Buy Avg Price"] + df3["Sell Avg Price"]
+
+                        # ---------- 4. Check 1 – row count ----------
+                        check1 = len(df1) == len(df3)
+
+                        # ---------- 5. Mapping & diff calculation ----------
+                        result = pd.DataFrame()
+                        for uid in lst:
+                            df_check = df1[df1["User ID"] == uid].copy()
+                            df_test  = df3[df3["UserID"] == uid].copy()
+
+                            if df_check.empty or df_test.empty:
+                                continue
+
+                            # Sort for deterministic mapping
+                            df_check.sort_values(by='Strike_Name', inplace=True)
+                            df_test.sort_values(by='Symbol', inplace=True)
+
+                            # Map morning values
+                            df_check['mor_pos_price']    = df_check['Strike_Name'].map(
+                                df_test.set_index('Symbol')['Avg_Price']
+                            )
+                            df_check['mor_pos_quantity'] = df_check['Strike_Name'].map(
+                                df_test.set_index('Symbol')['Net Qty']
+                            )
+
+                            # Differences
+                            df_check["differnce_avg_price"] = (
+                                df_check["Weighted_Avg_Price"] - df_check["mor_pos_price"]
+                            )
+                            df_check["differnce_quantity"] = (
+                                df_check["Total_Quantity"] - df_check["mor_pos_quantity"]
+                            )
+
+                            result = pd.concat([result, df_check], ignore_index=True)
+
+                        result['differnce_avg_price'] = result['differnce_avg_price'].round(2)
+
+                        # ---------- 6. Final checks ----------
+                        check2 = result['differnce_quantity'].sum()
+                        check3 = result['differnce_avg_price'].sum()
+
+                        # ---------- 7. Store in session ----------
+                        st.session_state.morning_verify_done = True
+                        st.session_state.morning_result_df   = result
+                        st.session_state.morning_check1      = check1
+                        st.session_state.morning_check2      = check2
+                        st.session_state.morning_check3      = check3
+
+                        st.success("Verification completed!")
+
+                    except Exception as e:
+                        st.error(f"Error during verification: {str(e)}")
+            else:
+                st.warning("Please upload all three files.")
+
+        # ---------- DISPLAY RESULTS ----------
+        if st.session_state.morning_verify_done:
+            st.markdown('<div class="section-card">', unsafe_allow_html=True)
+            st.subheader("Verification Results")
+
+            # ----- Summary cards -----
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <h3>{'True' if st.session_state.morning_check1 else 'False'}</h3>
+                    <p>Row Count Match</p>
+                    <span class="{'positive' if st.session_state.morning_check1 else 'negative'}">●</span>
+                </div>
+                """, unsafe_allow_html=True)
+            with col2:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <h3>{st.session_state.morning_check2}</h3>
+                    <p>Total Qty Diff</p>
+                    <span class="{'positive' if st.session_state.morning_check2 == 0 else 'negative'}">●</span>
+                </div>
+                """, unsafe_allow_html=True)
+            with col3:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <h3>{st.session_state.morning_check3:.2f}</h3>
+                    <p>Total Price Diff</p>
+                    <span class="{'positive' if abs(st.session_state.morning_check3) < 1 else 'negative'}">●</span>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # ----- Mismatch table -----
+            st.markdown("### Mismatch Details")
+            full = st.session_state.morning_result_df[
+                ['User ID', 'Strike_Name', 'Total_Quantity', 'mor_pos_quantity',
+                 'differnce_quantity', 'Weighted_Avg_Price', 'mor_pos_price',
+                 'differnce_avg_price']
+            ].copy()
+
+            # **CORRECTED FILTER** – element-wise OR + NaN safe
+            mask_qty   = (full['differnce_quantity'] != 0).fillna(False)
+            mask_price = (abs(full['differnce_avg_price']) > 0.01).fillna(False)
+            display_df = full[mask_qty | mask_price]
+
+            if display_df.empty:
+                st.success("No mismatches found!")
+            else:
+                styled = (
+                    display_df.style
+                    .format({
+                        "differnce_quantity": "{:.0f}",
+                        "differnce_avg_price": "{:.2f}"
+                    })
+                    .map(lambda x: "background-color: #fee",
+                         subset=pd.IndexSlice[mask_qty[mask_qty].index, 'differnce_quantity'])
+                    .map(lambda x: "background-color: #fff3cd",
+                         subset=pd.IndexSlice[mask_price[mask_price].index, 'differnce_avg_price'])
+                )
+                st.dataframe(styled, use_container_width=True)
+
+            # ----- Download full report -----
+            csv_buffer = io.BytesIO()
+            st.session_state.morning_result_df.to_csv(csv_buffer, index=False)
+            csv_buffer.seek(0)
+
+            st.download_button(
+                label="Download Full Verification Report (CSV)",
+                data=csv_buffer,
+                file_name="morning_position_verification_report.csv",
+                mime="text/csv",
+                use_container_width=True,
+                key="download_morning_report"
+            )
+
+            st.markdown('</div>', unsafe_allow_html=True)
+    
     # Footer
     st.markdown('<div class="footer">Powered by Streamlit | Designed for 2025 UX Excellence | Developed by Sahil</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
