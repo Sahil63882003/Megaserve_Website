@@ -615,44 +615,70 @@ if 'current_page' not in st.session_state:
 
 # --- Login page ---
 def login_page():
-    with st.container():
-        st.markdown(get_avatar(st.session_state.user_name), unsafe_allow_html=True)
-        st.markdown('<h2>Welcome Back</h2>', unsafe_allow_html=True)
-        if st.session_state.error:
-            st.markdown(f'<div class="form-error">{st.session_state.error}</div>', unsafe_allow_html=True)
+    # ---- Header & avatar -------------------------------------------------
+    st.markdown(get_avatar(st.session_state.user_name), unsafe_allow_html=True)
+    st.markdown('<h2>Welcome Back</h2>', unsafe_allow_html=True)
 
-        # Role select
-        role = st.selectbox('Login as:', ['User', 'Admin'],
-                            index=0 if st.session_state.role == 'user' else 1, key='role_select')
-        st.session_state.role = role.lower()
+    # ---- Error message ----------------------------------------------------
+    if st.session_state.error:
+        st.markdown(f'<div class="form-error">{st.session_state.error}</div>', unsafe_allow_html=True)
 
-        # Name input
-        name = st.text_input('Your Name', max_chars=30, placeholder='Enter your name',
-                             value=st.session_state.user_name, key='name_input')
+    # -----------------------------------------------------------------
+    # 1. Use a normal (non-form) widget for the role selector
+    # -----------------------------------------------------------------
+    role = st.selectbox(
+        "Login as:",
+        ["User", "Admin"],
+        index=0 if st.session_state.role == "user" else 1,
+        key="role_select"
+    )
 
-        # Password for admin
-        password = ''
-        if role.lower() == 'admin':
-            password = st.text_input('Admin Password', type='password', placeholder='Enter admin password', key='password_input')
+    # -----------------------------------------------------------------
+    # 2. Wrap ONLY the remaining inputs + submit button in a form
+    # -----------------------------------------------------------------
+    with st.form(key="login_form", clear_on_submit=True):
+        # Name is always required
+        name = st.text_input(
+            "Your Name",
+            max_chars=30,
+            placeholder="Enter your name",
+            value=st.session_state.user_name,
+            key="name_input"
+        )
 
-        with st.form(key='login_form', clear_on_submit=True):
-            submit = st.form_submit_button('Enter Dashboard →')
-            if submit:
-                if not name.strip():
-                    st.session_state.error = 'Name is required!'
-                    st.rerun()
-                if role.lower() == 'admin':
-                    if password != 'admin123':
-                        st.session_state.error = 'Invalid admin password!'
-                        st.rerun()
-                st.session_state.logged_in = True
-                st.session_state.user_name = name.strip()
-                st.session_state.role = role.lower()
-                st.session_state.error = ''
-                st.session_state.current_page = 'dashboard'
+        # Show password field **only when role == Admin**
+        password = ""
+        if role == "Admin":
+            password = st.text_input(
+                "Admin Password",
+                type="password",
+                placeholder="Enter admin password",
+                key="password_input"
+            )
+
+        # Submit button
+        submitted = st.form_submit_button("Enter Dashboard")
+
+        # -----------------------------------------------------------------
+        # 3. Validation – runs **only** when the button is pressed
+        # -----------------------------------------------------------------
+        if submitted:
+            if not name.strip():
+                st.session_state.error = "Name is required!"
                 st.rerun()
 
-# --- Render Sidebar Cards for Admin Role ---
+            if role == "Admin" and password != "admin123":
+                st.session_state.error = "Invalid admin password!"
+                st.rerun()
+
+            # ---- SUCCESS ------------------------------------------------
+            st.session_state.logged_in = True
+            st.session_state.user_name = name.strip()
+            st.session_state.role = role.lower()
+            st.session_state.error = ""
+            st.session_state.current_page = "dashboard"
+            st.rerun()# --- Render Sidebar Cards for Admin Role ---
+            
 def render_admin_sidebar_cards():
     st.markdown('<h3 class="sidebar-title">Navigation</h3>', unsafe_allow_html=True)
     for card_name, card in CARDS.items():
