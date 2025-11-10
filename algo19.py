@@ -682,500 +682,501 @@
 # if __name__ == "__main__":
 #     st.write(f"DEBUG: Starting Streamlit app at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 #     run()
+########################################################################################################################################################
+# import streamlit as st
+# import pandas as pd
+# import numpy as np
+# import re
+# import base64
+# from io import BytesIO
+# import logging
+# import openpyxl
+# from openpyxl.styles import Alignment, Border, Side, Font
+# from datetime import datetime
 
-import streamlit as st
-import pandas as pd
-import numpy as np
-import re
-import base64
-from io import BytesIO
-import logging
-import openpyxl
-from openpyxl.styles import Alignment, Border, Side, Font
-from datetime import datetime
+# # ====================== FIX: SET PAGE CONFIG FIRST ======================
+# st.set_page_config(
+#     page_title="AlphaTrade Pro",
+#     page_icon="Chart",
+#     layout="centered",
+#     initial_sidebar_state="collapsed"
+# )
 
-# ====================== FIX: SET PAGE CONFIG FIRST ======================
-st.set_page_config(
-    page_title="AlphaTrade Pro",
-    page_icon="Chart",
-    layout="centered",
-    initial_sidebar_state="collapsed"
-)
+# # Logging
+# logging.basicConfig(level=logging.INFO)
+# logger = logging.getLogger(__name__)
 
-# Logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# ====================== PROFESSIONAL CENTERED UI SETUP ======================
-st.markdown("""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+# # ====================== PROFESSIONAL CENTERED UI SETUP ======================
+# st.markdown("""
+#     <style>
+#     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
     
-    html, body, [class*="css"]  { font-family: 'Inter', sans-serif; }
+#     html, body, [class*="css"]  { font-family: 'Inter', sans-serif; }
     
-    .main {
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-        padding: 2rem 1rem;
-    }
+#     .main {
+#         background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+#         padding: 2rem 1rem;
+#     }
     
-    /* Light mode support */
-    @media (prefers-color-scheme: light) {
-        .main { 
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;
-        }
-        .glass-card {
-            background: rgba(255, 255, 255, 0.9) !important;
-            border: 1px solid rgba(0, 0, 0, 0.12) !important;
-            color: #1e293b !important;
-        }
-        .header-title { 
-            background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899) !important;
-            -webkit-background-clip: text !important;
-            -webkit-text-fill-color: transparent !important;
-        }
-        .header-subtitle, .upload-text, .metric-label { color: #475569 !important; }
-        .metric-value { 
-            background: linear-gradient(90deg, #10b981, #34d399) !important;
-            -webkit-background-clip: text !important;
-            -webkit-text-fill-color: transparent !important;
-        }
-        .metric-value.red {
-            background: linear-gradient(90deg, #ef4444, #f87171) !important;
-            -webkit-background-clip: text !important;
-            -webkit-text-fill-color: transparent !important;
-        }
-    }
+#     /* Light mode support */
+#     @media (prefers-color-scheme: light) {
+#         .main { 
+#             background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;
+#         }
+#         .glass-card {
+#             background: rgba(255, 255, 255, 0.9) !important;
+#             border: 1px solid rgba(0, 0, 0, 0.12) !important;
+#             color: #1e293b !important;
+#         }
+#         .header-title { 
+#             background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899) !important;
+#             -webkit-background-clip: text !important;
+#             -webkit-text-fill-color: transparent !important;
+#         }
+#         .header-subtitle, .upload-text, .metric-label { color: #475569 !important; }
+#         .metric-value { 
+#             background: linear-gradient(90deg, #10b981, #34d399) !important;
+#             -webkit-background-clip: text !important;
+#             -webkit-text-fill-color: transparent !important;
+#         }
+#         .metric-value.red {
+#             background: linear-gradient(90deg, #ef4444, #f87171) !important;
+#             -webkit-background-clip: text !important;
+#             -webkit-text-fill-color: transparent !important;
+#         }
+#     }
 
-    .block-container {
-        padding-top: 2rem;
-        max-width: 1000px;
-        margin: 0 auto;
-    }
+#     .block-container {
+#         padding-top: 2rem;
+#         max-width: 1000px;
+#         margin: 0 auto;
+#     }
 
-    .header-title {
-        font-size: 4.8rem;
-        font-weight: 900;
-        background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        text-align: center;
-        margin: 2rem 0 0.5rem;
-        letter-spacing: -3px;
-        line-height: 1;
-    }
+#     .header-title {
+#         font-size: 4.8rem;
+#         font-weight: 900;
+#         background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
+#         -webkit-background-clip: text;
+#         -webkit-text-fill-color: transparent;
+#         text-align: center;
+#         margin: 2rem 0 0.5rem;
+#         letter-spacing: -3px;
+#         line-height: 1;
+#     }
 
-    .header-subtitle {
-        font-size: 1.6rem;
-        color: #94a3b8;
-        text-align: center;
-        font-weight: 500;
-        margin-bottom: 3rem;
-        opacity: 0.9;
-    }
+#     .header-subtitle {
+#         font-size: 1.6rem;
+#         color: #94a3b8;
+#         text-align: center;
+#         font-weight: 500;
+#         margin-bottom: 3rem;
+#         opacity: 0.9;
+#     }
 
-    .glass-card {
-        background: rgba(255, 255, 255, 0.12);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border-radius: 24px;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        padding: 2.5rem;
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
-        transition: all 0.4s ease;
-        margin: 2rem auto;
-        max-width: 900px;
-    }
+#     .glass-card {
+#         background: rgba(255, 255, 255, 0.12);
+#         backdrop-filter: blur(20px);
+#         -webkit-backdrop-filter: blur(20px);
+#         border-radius: 24px;
+#         border: 1px solid rgba(255, 255, 255, 0.2);
+#         padding: 2.5rem;
+#         box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+#         transition: all 0.4s ease;
+#         margin: 2rem auto;
+#         max-width: 900px;
+#     }
 
-    .glass-card:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
-        border: 1px solid rgba(139, 92, 246, 0.4);
-    }
+#     .glass-card:hover {
+#         transform: translateY(-8px);
+#         box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+#         border: 1px solid rgba(139, 92, 246, 0.4);
+#     }
 
-    .metric-container {
-        background: rgba(255, 255, 255, 0.15);
-        border-radius: 20px;
-        padding: 2rem;
-        text-align: center;
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.25);
-        transition: all 0.3s ease;
-        height: 100%;
-    }
+#     .metric-container {
+#         background: rgba(255, 255, 255, 0.15);
+#         border-radius: 20px;
+#         padding: 2rem;
+#         text-align: center;
+#         backdrop-filter: blur(12px);
+#         border: 1px solid rgba(255, 255, 255, 0.25);
+#         transition: all 0.3s ease;
+#         height: 100%;
+#     }
 
-    .metric-container:hover {
-        background: rgba(255, 255, 255, 0.22);
-        transform: translateY(-5px) scale(1.03);
-    }
+#     .metric-container:hover {
+#         background: rgba(255, 255, 255, 0.22);
+#         transform: translateY(-5px) scale(1.03);
+#     }
 
-    .metric-label {
-        color: #cbd5e1;
-        font-size: 1.15rem;
-        font-weight: 600;
-        margin-bottom: 0.8rem;
-        letter-spacing: 0.5px;
-    }
+#     .metric-label {
+#         color: #cbd5e1;
+#         font-size: 1.15rem;
+#         font-weight: 600;
+#         margin-bottom: 0.8rem;
+#         letter-spacing: 0.5px;
+#     }
 
-    .metric-value {
-        font-size: 3rem;
-        font-weight: 800;
-        background: linear-gradient(90deg, #10b981, #34d399);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
+#     .metric-value {
+#         font-size: 3rem;
+#         font-weight: 800;
+#         background: linear-gradient(90deg, #10b981, #34d399);
+#         -webkit-background-clip: text;
+#         -webkit-text-fill-color: transparent;
+#     }
 
-    .metric-value.red {
-        background: linear-gradient(90deg, #ef4444, #f87171);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
+#     .metric-value.red {
+#         background: linear-gradient(90deg, #ef4444, #f87171);
+#         -webkit-background-clip: text;
+#         -webkit-text-fill-color: transparent;
+#     }
 
-    /* Buttons */
-    .stButton > button {
-        background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 16px !important;
-        padding: 1rem 2.5rem !important;
-        font-weight: 700 !important;
-        font-size: 1.2rem !important;
-        box-shadow: 0 10px 25px rgba(99, 102, 241, 0.4) !important;
-        transition: all 0.3s ease !important;
-        width: 100% !important;
-        height: 70px !important;
-        margin: 1rem 0 !important;
-    }
+#     /* Buttons */
+#     .stButton > button {
+#         background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+#         color: white !important;
+#         border: none !important;
+#         border-radius: 16px !important;
+#         padding: 1rem 2.5rem !important;
+#         font-weight: 700 !important;
+#         font-size: 1.2rem !important;
+#         box-shadow: 0 10px 25px rgba(99, 102, 241, 0.4) !important;
+#         transition: all 0.3s ease !important;
+#         width: 100% !important;
+#         height: 70px !important;
+#         margin: 1rem 0 !important;
+#     }
 
-    .stButton > button:hover {
-        transform: translateY(-4px) !important;
-        box-shadow: 0 15px 35px rgba(99, 102, 241, 0.6) !important;
-        background: linear-gradient(135deg, #7c3aed, #a855f7) !important;
-    }
+#     .stButton > button:hover {
+#         transform: translateY(-4px) !important;
+#         box-shadow: 0 15px 35px rgba(99, 102, 241, 0.6) !important;
+#         background: linear-gradient(135deg, #7c3aed, #a855f7) !important;
+#     }
 
-    /* File Uploaders */
-    .stFileUploader > div > div {
-        background: rgba(255, 255, 255, 0.1);
-        border: 2px dashed rgba(255, 255, 255, 0.35);
-        border-radius: 20px;
-        padding: 2.5rem;
-        text-align: center;
-        transition: all 0.4s;
-    }
+#     /* File Uploaders */
+#     .stFileUploader > div > div {
+#         background: rgba(255, 255, 255, 0.1);
+#         border: 2px dashed rgba(255, 255, 255, 0.35);
+#         border-radius: 20px;
+#         padding: 2.5rem;
+#         text-align: center;
+#         transition: all 0.4s;
+#     }
 
-    .stFileUploader > div > div:hover {
-        border-color: #a78bfa;
-        background: rgba(167, 139, 250, 0.15);
-        transform: scale(1.02);
-    }
+#     .stFileUploader > div > div:hover {
+#         border-color: #a78bfa;
+#         background: rgba(167, 139, 250, 0.15);
+#         transform: scale(1.02);
+#     }
 
-    .upload-text {
-        color: #e2e8f0;
-        font-size: 1.15rem;
-        font-weight: 500;
-        margin-top: 0.5rem;
-    }
+#     .upload-text {
+#         color: #e2e8f0;
+#         font-size: 1.15rem;
+#         font-weight: 500;
+#         margin-top: 0.5rem;
+#     }
 
-    /* Tabs */
-    .stTabs [data-baseweb="tab-list"] {
-        justify-content: center;
-        gap: 1.5rem;
-        padding: 0 1rem;
-    }
+#     /* Tabs */
+#     .stTabs [data-baseweb="tab-list"] {
+#         justify-content: center;
+#         gap: 1.5rem;
+#         padding: 0 1rem;
+#     }
 
-    .stTabs [data-baseweb="tab"] {
-        font-size: 1.2rem;
-        font-weight: 600;
-        padding: 1rem 2rem;
-        border-radius: 16px;
-        background: rgba(255, 255, 255, 0.1);
-        transition: all 0.3s;
-    }
+#     .stTabs [data-baseweb="tab"] {
+#         font-size: 1.2rem;
+#         font-weight: 600;
+#         padding: 1rem 2rem;
+#         border-radius: 16px;
+#         background: rgba(255, 255, 255, 0.1);
+#         transition: all 0.3s;
+#     }
 
-    .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, #8b5cf6, #ec4899);
-        color: white;
-    }
+#     .stTabs [aria-selected="true"] {
+#         background: linear-gradient(135deg, #8b5cf6, #ec4899);
+#         color: white;
+#     }
 
-    /* Download Link */
-    .download-link {
-        display: inline-block;
-        background: linear-gradient(135deg, #10b981, #34d399);
-        color: white;
-        padding: 1.2rem 3rem;
-        border-radius: 16px;
-        text-decoration: none;
-        font-weight: 700;
-        font-size: 1.3rem;
-        box-shadow: 0 12px 30px rgba(16, 185, 129, 0.4);
-        transition: all 0.3s;
-        text-align: center;
-    }
+#     /* Download Link */
+#     .download-link {
+#         display: inline-block;
+#         background: linear-gradient(135deg, #10b981, #34d399);
+#         color: white;
+#         padding: 1.2rem 3rem;
+#         border-radius: 16px;
+#         text-decoration: none;
+#         font-weight: 700;
+#         font-size: 1.3rem;
+#         box-shadow: 0 12px 30px rgba(16, 185, 129, 0.4);
+#         transition: all 0.3s;
+#         text-align: center;
+#     }
 
-    .download-link:hover {
-        transform: translateY(-6px);
-        box-shadow: 0 20px 40px rgba(16, 185, 129, 0.6);
-    }
+#     .download-link:hover {
+#         transform: translateY(-6px);
+#         box-shadow: 0 20px 40px rgba(16, 185, 129, 0.6);
+#     }
 
-    .full-center { 
-        display: flex; 
-        justify-content: center; 
-        align-items: center; 
-        flex-direction: column;
-        width: 100%;
-        text-align: center;
-    }
+#     .full-center { 
+#         display: flex; 
+#         justify-content: center; 
+#         align-items: center; 
+#         flex-direction: column;
+#         width: 100%;
+#         text-align: center;
+#     }
 
-    .footer {
-        text-align: center;
-        color: #64748b;
-        font-size: 1rem;
-        margin-top: 5rem;
-        padding: 2rem;
-        opacity: 0.8;
-    }
+#     .footer {
+#         text-align: center;
+#         color: #64748b;
+#         font-size: 1rem;
+#         margin-top: 5rem;
+#         padding: 2rem;
+#         opacity: 0.8;
+#     }
 
-    h3, h4 { text-align: center; color: #e2e8f0; }
-    </style>
-""", unsafe_allow_html=True)
+#     h3, h4 { text-align: center; color: #e2e8f0; }
+#     </style>
+# """, unsafe_allow_html=True)
 
-# ====================== MAIN APP ======================
-def main():
-    # Centered Header
-    st.markdown('<div class="full-center">', unsafe_allow_html=True)
-    st.markdown('<h1 class="header-title">AlphaTrade Pro</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="header-subtitle">Institutional-Grade Multi-User PNL & Portfolio Exit Intelligence</p>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+# # ====================== MAIN APP ======================
+# def main():
+#     # Centered Header
+#     st.markdown('<div class="full-center">', unsafe_allow_html=True)
+#     st.markdown('<h1 class="header-title">AlphaTrade Pro</h1>', unsafe_allow_html=True)
+#     st.markdown('<p class="header-subtitle">Institutional-Grade Multi-User PNL & Portfolio Exit Intelligence</p>', unsafe_allow_html=True)
+#     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Tabs
-    tab1, tab2 = st.tabs(["PNL Calculator (Multi-User)", "Portfolio Exit Analyzer"])
+#     # Tabs
+#     tab1, tab2 = st.tabs(["PNL Calculator (Multi-User)", "Portfolio Exit Analyzer"])
 
-    # ==================== TAB 1: PNL ====================
-    with tab1:
-        st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-        st.markdown("<h3>Upload Positions File (Must contain `UserID` column)</h3>", unsafe_allow_html=True)
+#     # ==================== TAB 1: PNL ====================
+#     with tab1:
+#         st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+#         st.markdown("<h3>Upload Positions File (Must contain `UserID` column)</h3>", unsafe_allow_html=True)
         
-        st.markdown("<div class='full-center'>", unsafe_allow_html=True)
-        positions_file = st.file_uploader(
-            "", 
-            type="csv", 
-            key="pos",
-            label_visibility="collapsed"
-        )
-        if positions_file:
-            st.markdown(f"<p class='upload-text'>Uploaded: <strong>{positions_file.name}</strong></p>", unsafe_allow_html=True)
-        else:
-            st.markdown("<p class='upload-text'>Drag & drop POSITIONS CSV here</p>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+#         st.markdown("<div class='full-center'>", unsafe_allow_html=True)
+#         positions_file = st.file_uploader(
+#             "", 
+#             type="csv", 
+#             key="pos",
+#             label_visibility="collapsed"
+#         )
+#         if positions_file:
+#             st.markdown(f"<p class='upload-text'>Uploaded: <strong>{positions_file.name}</strong></p>", unsafe_allow_html=True)
+#         else:
+#             st.markdown("<p class='upload-text'>Drag & drop POSITIONS CSV here</p>", unsafe_allow_html=True)
+#         st.markdown("</div>", unsafe_allow_html=True)
 
-        st.markdown("### Settlement Options")
-        col1, col2 = st.columns(2)
-        with col1:
-            include_nfo = st.checkbox("Include NFO Settlement", value=True)
-            include_bfo = st.checkbox("Include BFO Settlement", value=True)
-        with col2:
-            nfo_bhav = st.file_uploader("NFO Bhavcopy", type="csv", key="nfo_bhav") if include_nfo else None
-            bfo_bhav = st.file_uploader("BFO Bhavcopy", type="csv", key="bfo_bhav") if include_bfo else None
+#         st.markdown("### Settlement Options")
+#         col1, col2 = st.columns(2)
+#         with col1:
+#             include_nfo = st.checkbox("Include NFO Settlement", value=True)
+#             include_bfo = st.checkbox("Include BFO Settlement", value=True)
+#         with col2:
+#             nfo_bhav = st.file_uploader("NFO Bhavcopy", type="csv", key="nfo_bhav") if include_nfo else None
+#             bfo_bhav = st.file_uploader("BFO Bhavcopy", type="csv", key="bfo_bhav") if include_bfo else None
 
-        col3, col4 = st.columns(2)
-        with col3:
-            expiry_nfo = st.date_input("NFO Expiry Date", value=datetime(2025, 11, 11), disabled=not include_nfo)
-        with col4:
-            expiry_bfo = st.date_input("BFO Expiry Date", value=datetime(2025, 11, 13), disabled=not include_bfo)
+#         col3, col4 = st.columns(2)
+#         with col3:
+#             expiry_nfo = st.date_input("NFO Expiry Date", value=datetime(2025, 11, 11), disabled=not include_nfo)
+#         with col4:
+#             expiry_bfo = st.date_input("BFO Expiry Date", value=datetime(2025, 11, 13), disabled=not include_bfo)
 
-        st.markdown("<div class='full-center'>", unsafe_allow_html=True)
-        if st.button("Process Multi-User PNL", type="primary", use_container_width=True):
-            if not positions_file:
-                st.error("Please upload POSITIONS file.")
-            elif (include_nfo and not nfo_bhav) or (include_bfo and not bfo_bhav):
-                st.error("Please upload required bhavcopy files.")
-            else:
-                with st.spinner("Processing millions of records..."):
-                    try:
-                        results = process_pnl_multi_user(
-                            positions_file, nfo_bhav, bfo_bhav,
-                            expiry_nfo, expiry_bfo, include_nfo, include_bfo
-                        )
-                        display_pnl_results(results)
-                    except Exception as e:
-                        st.error(f"Error: {e}")
-                        logger.error(e)
-        st.markdown("</div>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+#         st.markdown("<div class='full-center'>", unsafe_allow_html=True)
+#         if st.button("Process Multi-User PNL", type="primary", use_container_width=True):
+#             if not positions_file:
+#                 st.error("Please upload POSITIONS file.")
+#             elif (include_nfo and not nfo_bhav) or (include_bfo and not bfo_bhav):
+#                 st.error("Please upload required bhavcopy files.")
+#             else:
+#                 with st.spinner("Processing millions of records..."):
+#                     try:
+#                         results = process_pnl_multi_user(
+#                             positions_file, nfo_bhav, bfo_bhav,
+#                             expiry_nfo, expiry_bfo, include_nfo, include_bfo
+#                         )
+#                         display_pnl_results(results)
+#                     except Exception as e:
+#                         st.error(f"Error: {e}")
+#                         logger.error(e)
+#         st.markdown("</div>", unsafe_allow_html=True)
+#         st.markdown("</div>", unsafe_allow_html=True)
 
-    # ==================== TAB 2: PORTFOLIO ====================
-    with tab2:
-        st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-        st.markdown("<h3>Upload GridLog & Summary Files</h3>", unsafe_allow_html=True)
+#     # ==================== TAB 2: PORTFOLIO ====================
+#     with tab2:
+#         st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+#         st.markdown("<h3>Upload GridLog & Summary Files</h3>", unsafe_allow_html=True)
 
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown("<div class='full-center'>", unsafe_allow_html=True)
-            gridlog_file = st.file_uploader("", type=["csv", "xlsx"], key="grid", label_visibility="collapsed")
-            if gridlog_file:
-                st.markdown(f"<p class='upload-text'>GridLog: <strong>{gridlog_file.name}</strong></p>", unsafe_allow_html=True)
-            else:
-                st.markdown("<p class='upload-text'>Upload GridLog (CSV/XLSX)</p>", unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+#         col1, col2 = st.columns(2)
+#         with col1:
+#             st.markdown("<div class='full-center'>", unsafe_allow_html=True)
+#             gridlog_file = st.file_uploader("", type=["csv", "xlsx"], key="grid", label_visibility="collapsed")
+#             if gridlog_file:
+#                 st.markdown(f"<p class='upload-text'>GridLog: <strong>{gridlog_file.name}</strong></p>", unsafe_allow_html=True)
+#             else:
+#                 st.markdown("<p class='upload-text'>Upload GridLog (CSV/XLSX)</p>", unsafe_allow_html=True)
+#             st.markdown("</div>", unsafe_allow_html=True)
 
-        with col2:
-            st.markdown("<div class='full-center'>", unsafe_allow_html=True)
-            summary_file = st.file_uploader("", type="xlsx", key="sum", label_visibility="collapsed")
-            if summary_file:
-                st.markdown(f"<p class='upload-text'>Summary: <strong>{summary_file.name}</strong></p>", unsafe_allow_html=True)
-            else:
-                st.markdown("<p class='upload-text'>Upload Summary Excel</p>", unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+#         with col2:
+#             st.markdown("<div class='full-center'>", unsafe_allow_html=True)
+#             summary_file = st.file_uploader("", type="xlsx", key="sum", label_visibility="collapsed")
+#             if summary_file:
+#                 st.markdown(f"<p class='upload-text'>Summary: <strong>{summary_file.name}</strong></p>", unsafe_allow_html=True)
+#             else:
+#                 st.markdown("<p class='upload-text'>Upload Summary Excel</p>", unsafe_allow_html=True)
+#             st.markdown("</div>", unsafe_allow_html=True)
 
-        st.markdown("<div class='full-center'>", unsafe_allow_html=True)
-        if st.button("Analyze Portfolio Exits", type="primary", use_container_width=True):
-            if not gridlog_file or not summary_file:
-                st.error("Please upload both files.")
-            else:
-                with st.spinner("Deep analysis in progress..."):
-                    try:
-                        final_df = process_portfolio_data(gridlog_file, summary_file)
-                        st.success("Analysis Complete!")
-                        st.markdown("### Exit Reasons & Timestamps")
-                        st.dataframe(final_df, use_container_width=True)
-                        st.markdown(get_csv_download_link(final_df, "Portfolio_Exit_Analysis"), unsafe_allow_html=True)
-                    except Exception as e:
-                        st.error(f"Error: {e}")
-        st.markdown("</div>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+#         st.markdown("<div class='full-center'>", unsafe_allow_html=True)
+#         if st.button("Analyze Portfolio Exits", type="primary", use_container_width=True):
+#             if not gridlog_file or not summary_file:
+#                 st.error("Please upload both files.")
+#             else:
+#                 with st.spinner("Deep analysis in progress..."):
+#                     try:
+#                         final_df = process_portfolio_data(gridlog_file, summary_file)
+#                         st.success("Analysis Complete!")
+#                         st.markdown("### Exit Reasons & Timestamps")
+#                         st.dataframe(final_df, use_container_width=True)
+#                         st.markdown(get_csv_download_link(final_df, "Portfolio_Exit_Analysis"), unsafe_allow_html=True)
+#                     except Exception as e:
+#                         st.error(f"Error: {e}")
+#         st.markdown("</div>", unsafe_allow_html=True)
+#         st.markdown("</div>", unsafe_allow_html=True)
 
-    # Footer
-    st.markdown("""
-        <div class='footer'>
-            <p>AlphaTrade Pro © 2025 | Institutional Trading Intelligence Platform</p>
-            <p>Powered by Precision • Trusted by Elite Traders</p>
-        </div>
-    """, unsafe_allow_html=True)
+#     # Footer
+#     st.markdown("""
+#         <div class='footer'>
+#             <p>AlphaTrade Pro © 2025 | Institutional Trading Intelligence Platform</p>
+#             <p>Powered by Precision • Trusted by Elite Traders</p>
+#         </div>
+#     """, unsafe_allow_html=True)
 
-# ====================== ALL FUNCTIONS (UNCHANGED LOGIC) ======================
-# [Keep all your functions exactly as before: process_pnl_multi_user, display_pnl_results, etc.]
-# ... [PASTE ALL YOUR FUNCTIONS HERE - SAME AS BEFORE] ...
+# # ====================== ALL FUNCTIONS (UNCHANGED LOGIC) ======================
+# # [Keep all your functions exactly as before: process_pnl_multi_user, display_pnl_results, etc.]
+# # ... [PASTE ALL YOUR FUNCTIONS HERE - SAME AS BEFORE] ...
 
-# ====================== PNL PROCESSING ======================
-def process_pnl_multi_user(pos_file, nfo_bhav_file, bfo_bhav_file, expiry_nfo, expiry_bfo, inc_nfo, inc_bfo):
-    df = pd.read_csv(pos_file)
-    if 'UserID' not in df.columns:
-        raise ValueError("UserID column missing!")
+# # ====================== PNL PROCESSING ======================
+# def process_pnl_multi_user(pos_file, nfo_bhav_file, bfo_bhav_file, expiry_nfo, expiry_bfo, inc_nfo, inc_bfo):
+#     df = pd.read_csv(pos_file)
+#     if 'UserID' not in df.columns:
+#         raise ValueError("UserID column missing!")
 
-    mask = df["Exchange"].isin(["NFO", "BFO"])
-    df.loc[mask, "Symbol"] = df.loc[mask, "Symbol"].astype(str).str.extract(r'(\d{5}[CP]\d*)')[0]
+#     mask = df["Exchange"].isin(["NFO", "BFO"])
+#     df.loc[mask, "Symbol"] = df.loc[mask, "Symbol"].astype(str).str.extract(r'(\d{5}[CP]\d*)')[0]
 
-    df_bhav_nfo = pd.DataFrame()
-    df_bhav_bfo = pd.DataFrame()
-    bhav_map = {}
+#     df_bhav_nfo = pd.DataFrame()
+#     df_bhav_bfo = pd.DataFrame()
+#     bhav_map = {}
 
-    if inc_nfo and nfo_bhav_file:
-        df_bhav_nfo = pd.read_csv(nfo_bhav_file)
-        df_bhav_nfo["Date"] = pd.to_datetime(df_bhav_nfo["CONTRACT_D"].str.extract(r'(\d{2}-[A-Z]{3}-\d{4})')[0], format="%d-%b-%Y")
-        df_bhav_nfo["Strike_Type"] = df_bhav_nfo["CONTRACT_D"].str.extract(r'(PE\d+|CE\d+)$')[0].str.replace(r'^(PE|CE)(\d+)$', r'\2\1', regex=True)
-        df_bhav_nfo = df_bhav_nfo[(df_bhav_nfo["Date"] == pd.to_datetime(expiry_nfo)) & (df_bhav_nfo["CONTRACT_D"].str.contains("NIFTY"))]
+#     if inc_nfo and nfo_bhav_file:
+#         df_bhav_nfo = pd.read_csv(nfo_bhav_file)
+#         df_bhav_nfo["Date"] = pd.to_datetime(df_bhav_nfo["CONTRACT_D"].str.extract(r'(\d{2}-[A-Z]{3}-\d{4})')[0], format="%d-%b-%Y")
+#         df_bhav_nfo["Strike_Type"] = df_bhav_nfo["CONTRACT_D"].str.extract(r'(PE\d+|CE\d+)$')[0].str.replace(r'^(PE|CE)(\d+)$', r'\2\1', regex=True)
+#         df_bhav_nfo = df_bhav_nfo[(df_bhav_nfo["Date"] == pd.to_datetime(expiry_nfo)) & (df_bhav_nfo["CONTRACT_D"].str.contains("NIFTY"))]
 
-    if inc_bfo and bfo_bhav_file:
-        df_bhav_bfo = pd.read_csv(bfo_bhav_file)
-        df_bhav_bfo["Expiry Date"] = pd.to_datetime(df_bhav_bfo["Expiry Date"], format="%d %b %Y", errors='coerce')
-        df_bhav_bfo = df_bhav_bfo[df_bhav_bfo["Expiry Date"] == pd.to_datetime(expiry_bfo)]
-        bhav_map = df_bhav_bfo.drop_duplicates("Series Code").set_index("Series Code")["Close Price"]
+#     if inc_bfo and bfo_bhav_file:
+#         df_bhav_bfo = pd.read_csv(bfo_bhav_file)
+#         df_bhav_bfo["Expiry Date"] = pd.to_datetime(df_bhav_bfo["Expiry Date"], format="%d %b %Y", errors='coerce')
+#         df_bhav_bfo = df_bhav_bfo[df_bhav_bfo["Expiry Date"] == pd.to_datetime(expiry_bfo)]
+#         bhav_map = df_bhav_bfo.drop_duplicates("Series Code").set_index("Series Code")["Close Price"]
 
-    all_results = {}
-    summary_rows = []
+#     all_results = {}
+#     summary_rows = []
 
-    for user in df['UserID'].unique():
-        user_df = df[df['UserID'] == user].copy()
-        nfo_df = user_df[user_df["Exchange"] == "NFO"].copy()
-        bfo_df = user_df[user_df["Exchange"] == "BFO"].copy()
+#     for user in df['UserID'].unique():
+#         user_df = df[df['UserID'] == user].copy()
+#         nfo_df = user_df[user_df["Exchange"] == "NFO"].copy()
+#         bfo_df = user_df[user_df["Exchange"] == "BFO"].copy()
 
-        realized_nfo = realized_bfo = settlement_nfo = settlement_bfo = 0
+#         realized_nfo = realized_bfo = settlement_nfo = settlement_bfo = 0
 
-        if not nfo_df.empty:
-            nfo_df["Strike_Type"] = nfo_df["Symbol"].str.extract(r'(\d+[A-Z]{2})$')[0]
-            conditions = [nfo_df["Net Qty"] == 0, nfo_df["Net Qty"] > 0, nfo_df["Net Qty"] < 0]
-            choices = [
-                (nfo_df["Sell Avg Price"] - nfo_df["Buy Avg Price"]) * nfo_df["Sell Qty"],
-                (nfo_df["Sell Avg Price"] - nfo_df["Buy Avg Price"]) * nfo_df["Sell Qty"],
-                (nfo_df["Sell Avg Price"] - nfo_df["Buy Avg Price"]) * nfo_df["Buy Qty"]
-            ]
-            nfo_df["Calc_Realized"] = np.select(conditions, choices, 0)
-            realized_nfo = nfo_df["Calc_Realized"].sum()
+#         if not nfo_df.empty:
+#             nfo_df["Strike_Type"] = nfo_df["Symbol"].str.extract(r'(\d+[A-Z]{2})$')[0]
+#             conditions = [nfo_df["Net Qty"] == 0, nfo_df["Net Qty"] > 0, nfo_df["Net Qty"] < 0]
+#             choices = [
+#                 (nfo_df["Sell Avg Price"] - nfo_df["Buy Avg Price"]) * nfo_df["Sell Qty"],
+#                 (nfo_df["Sell Avg Price"] - nfo_df["Buy Avg Price"]) * nfo_df["Sell Qty"],
+#                 (nfo_df["Sell Avg Price"] - nfo_df["Buy Avg Price"]) * nfo_df["Buy Qty"]
+#             ]
+#             nfo_df["Calc_Realized"] = np.select(conditions, choices, 0)
+#             realized_nfo = nfo_df["Calc_Realized"].sum()
 
-            if inc_nfo and not df_bhav_nfo.empty:
-                nfo_df = nfo_df.merge(df_bhav_nfo[["Strike_Type", "SETTLEMENT"]], on="Strike_Type", how="left")
-                nfo_df["Calc_Settlement"] = np.where(
-                    nfo_df["Net Qty"] > 0,
-                    (nfo_df["SETTLEMENT"] - nfo_df["Buy Avg Price"]) * nfo_df["Net Qty"],
-                    np.where(nfo_df["Net Qty"] < 0,
-                             (nfo_df["Sell Avg Price"] - nfo_df["SETTLEMENT"]) * (-nfo_df["Net Qty"]), 0)
-                )
-                settlement_nfo = nfo_df["Calc_Settlement"].fillna(0).sum()
-            else:
-                nfo_df["Calc_Settlement"] = 0
+#             if inc_nfo and not df_bhav_nfo.empty:
+#                 nfo_df = nfo_df.merge(df_bhav_nfo[["Strike_Type", "SETTLEMENT"]], on="Strike_Type", how="left")
+#                 nfo_df["Calc_Settlement"] = np.where(
+#                     nfo_df["Net Qty"] > 0,
+#                     (nfo_df["SETTLEMENT"] - nfo_df["Buy Avg Price"]) * nfo_df["Net Qty"],
+#                     np.where(nfo_df["Net Qty"] < 0,
+#                              (nfo_df["Sell Avg Price"] - nfo_df["SETTLEMENT"]) * (-nfo_df["Net Qty"]), 0)
+#                 )
+#                 settlement_nfo = nfo_df["Calc_Settlement"].fillna(0).sum()
+#             else:
+#                 nfo_df["Calc_Settlement"] = 0
 
-        if not bfo_df.empty:
-            conditions_b = [bfo_df["Net Qty"] == 0, bfo_df["Net Qty"] > 0, bfo_df["Net Qty"] < 0]
-            choices_b = [
-                (bfo_df["Sell Avg Price"] - bfo_df["Buy Avg Price"]) * bfo_df["Sell Qty"],
-                (bfo_df["Sell Avg Price"] - bfo_df["Buy Avg Price"]) * bfo_df["Sell Qty"],
-                (bfo_df["Sell Avg Price"] - bfo_df["Buy Avg Price"]) * bfo_df["Buy Qty"]
-            ]
-            bfo_df["Calc_Realized"] = np.select(conditions_b, choices_b, 0)
-            realized_bfo = bfo_df["Calc_Realized"].sum()
+#         if not bfo_df.empty:
+#             conditions_b = [bfo_df["Net Qty"] == 0, bfo_df["Net Qty"] > 0, bfo_df["Net Qty"] < 0]
+#             choices_b = [
+#                 (bfo_df["Sell Avg Price"] - bfo_df["Buy Avg Price"]) * bfo_df["Sell Qty"],
+#                 (bfo_df["Sell Avg Price"] - bfo_df["Buy Avg Price"]) * bfo_df["Sell Qty"],
+#                 (bfo_df["Sell Avg Price"] - bfo_df["Buy Avg Price"]) * bfo_df["Buy Qty"]
+#             ]
+#             bfo_df["Calc_Realized"] = np.select(conditions_b, choices_b, 0)
+#             realized_bfo = bfo_df["Calc_Realized"].sum()
 
-            if inc_bfo and not df_bhav_bfo.empty:
-                bfo_df["Close"] = bfo_df["Symbol"].map(bhav_map)
-                bfo_df["Calc_Settlement"] = 0
-                long = bfo_df["Net Qty"] > 0
-                short = bfo_df["Net Qty"] < 0
-                bfo_df.loc[long, "Calc_Settlement"] = (bfo_df["Close"] - bfo_df["Buy Avg Price"]) * bfo_df["Net Qty"]
-                bfo_df.loc[short, "Calc_Settlement"] = (bfo_df["Sell Avg Price"] - bfo_df["Close"]) * (-bfo_df["Net Qty"])
-                settlement_bfo = bfo_df["Calc_Settlement"].fillna(0).sum()
-            else:
-                bfo_df["Calc_Settlement"] = 0
+#             if inc_bfo and not df_bhav_bfo.empty:
+#                 bfo_df["Close"] = bfo_df["Symbol"].map(bhav_map)
+#                 bfo_df["Calc_Settlement"] = 0
+#                 long = bfo_df["Net Qty"] > 0
+#                 short = bfo_df["Net Qty"] < 0
+#                 bfo_df.loc[long, "Calc_Settlement"] = (bfo_df["Close"] - bfo_df["Buy Avg Price"]) * bfo_df["Net Qty"]
+#                 bfo_df.loc[short, "Calc_Settlement"] = (bfo_df["Sell Avg Price"] - bfo_df["Close"]) * (-bfo_df["Net Qty"])
+#                 settlement_bfo = bfo_df["Calc_Settlement"].fillna(0).sum()
+#             else:
+#                 bfo_df["Calc_Settlement"] = 0
 
-        total = realized_nfo + realized_bfo + settlement_nfo + settlement_bfo
-        summary_rows.append({
-            "UserID": user,
-            "Realized PNL": realized_nfo + realized_bfo,
-            "Settlement PNL": settlement_nfo + settlement_bfo,
-            "Total PNL": total
-        })
+#         total = realized_nfo + realized_bfo + settlement_nfo + settlement_bfo
+#         summary_rows.append({
+#             "UserID": user,
+#             "Realized PNL": realized_nfo + realized_bfo,
+#             "Settlement PNL": settlement_nfo + settlement_bfo,
+#             "Total PNL": total
+#         })
 
-        all_results[user] = {
-            "nfo": nfo_df.assign(UserID=user),
-            "bfo": bfo_df.assign(UserID=user)
-        }
+#         all_results[user] = {
+#             "nfo": nfo_df.assign(UserID=user),
+#             "bfo": bfo_df.assign(UserID=user)
+#         }
 
-    summary_df = pd.DataFrame(summary_rows)
-    return {
-        "detailed": all_results,
-        "summary": summary_df,
-        "total_realized": summary_df["Realized PNL"].sum(),
-        "total_settlement": summary_df["Settlement PNL"].sum(),
-        "grand_total": summary_df["Total PNL"].sum()
-    }
+#     summary_df = pd.DataFrame(summary_rows)
+#     return {
+#         "detailed": all_results,
+#         "summary": summary_df,
+#         "total_realized": summary_df["Realized PNL"].sum(),
+#         "total_settlement": summary_df["Settlement PNL"].sum(),
+#         "grand_total": summary_df["Total PNL"].sum()
+#     }
 
-def display_pnl_results(results):
-    st.success("Processing Complete – All Users Analyzed!")
+# def display_pnl_results(results):
+#     st.success("Processing Complete – All Users Analyzed!")
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown(f"""
-            <div class="metric-container">
-                <div class="metric-label">Total Realized</div>
-                <div class="metric-value {'red' if results["total_realized"] < 0 else ''}">₹{results["total_realized"]:,.2f}</div>
-            </div>
-        """, unsafe_allow_html=True)
-    with col2:
-        st.markdown(f"""
-            <div class="metric-container">
-                <div class="metric-label">Settlement PNL</div>
-                <div class="metric-value {'red' if results["total_settlement"] < 0 else ''}">₹{results["total_settlement"]:,.2f}</div>
-            </div>
-        """, unsafe_allow_html=True)
-    with col3:
-        st.markdown(f"""
-            <div class="metric-container">
-                <div class="metric-label">Grand Total</div>
-                <div class="metric-value {'red' if results["grand_total"] < 0
+#     col1, col2, col3 = st.columns(3)
+#     with col1:
+#         st.markdown(f"""
+#             <div class="metric-container">
+#                 <div class="metric-label">Total Realized</div>
+#                 <div class="metric-value {'red' if results["total_realized"] < 0 else ''}">₹{results["total_realized"]:,.2f}</div>
+#             </div>
+#         """, unsafe_allow_html=True)
+#     with col2:
+#         st.markdown(f"""
+#             <div class="metric-container">
+#                 <div class="metric-label">Settlement PNL</div>
+#                 <div class="metric-value {'red' if results["total_settlement"] < 0 else ''}">₹{results["total_settlement"]:,.2f}</div>
+#             </div>
+#         """, unsafe_allow_html=True)
+#     with col3:
+#         st.markdown(f"""
+#             <div class="metric-container">
+#                 <div class="metric-label">Grand Total</div>
+#                 <div class="metric-value {'red' if results["grand_total"] < 0
+
