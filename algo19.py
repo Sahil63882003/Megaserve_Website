@@ -694,253 +694,255 @@ import openpyxl
 from openpyxl.styles import Alignment, Border, Side, Font
 from datetime import datetime
 
+# ====================== FIX: SET PAGE CONFIG FIRST ======================
+st.set_page_config(
+    page_title="AlphaTrade Pro",
+    page_icon="Chart",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
+
 # Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ====================== PROFESSIONAL CENTERED UI SETUP ======================
-def set_professional_ui():
-    st.set_page_config(page_title="Algo 19 Pro", page_icon="📈", layout="centered")
-
-    # Premium CSS with perfect centering, light/dark support, glassmorphism
-    st.markdown("""
-        <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-        
-        html, body, [class*="css"]  { font-family: 'Inter', sans-serif; }
-        
-        .main {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            padding: 2rem 1rem;
+st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+    
+    html, body, [class*="css"]  { font-family: 'Inter', sans-serif; }
+    
+    .main {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        padding: 2rem 1rem;
+    }
+    
+    /* Light mode support */
+    @media (prefers-color-scheme: light) {
+        .main { 
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;
         }
-        
-        /* Light mode support */
-        @media (prefers-color-scheme: light) {
-            .main { 
-                background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;
-            }
-            .glass-card {
-                background: rgba(255, 255, 255, 0.85) !important;
-                border: 1px solid rgba(0, 0, 0, 0.1) !important;
-                color: #1e293b !important;
-            }
-            .header-title { 
-                background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899) !important;
-                -webkit-background-clip: text !important;
-                -webkit-text-fill-color: transparent !important;
-            }
-            .header-subtitle, .upload-text, .metric-label { color: #475569 !important; }
-            .metric-value { 
-                background: linear-gradient(90deg, #10b981, #34d399) !important;
-                -webkit-background-clip: text !important;
-                -webkit-text-fill-color: transparent !important;
-            }
-            .metric-value.red {
-                background: linear-gradient(90deg, #ef4444, #f87171) !important;
-                -webkit-background-clip: text !important;
-                -webkit-text-fill-color: transparent !important;
-            }
-        }
-
-        .block-container {
-            padding-top: 2rem;
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-
-        .header-title {
-            font-size: 4.8rem;
-            font-weight: 900;
-            background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-align: center;
-            margin: 2rem 0 0.5rem;
-            letter-spacing: -3px;
-            line-height: 1;
-        }
-
-        .header-subtitle {
-            font-size: 1.6rem;
-            color: #94a3b8;
-            text-align: center;
-            font-weight: 500;
-            margin-bottom: 3rem;
-            opacity: 0.9;
-        }
-
         .glass-card {
-            background: rgba(255, 255, 255, 0.12);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-radius: 24px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 2.5rem;
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
-            transition: all 0.4s ease;
-            margin: 2rem auto;
-            max-width: 900px;
+            background: rgba(255, 255, 255, 0.9) !important;
+            border: 1px solid rgba(0, 0, 0, 0.12) !important;
+            color: #1e293b !important;
         }
-
-        .glass-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
-            border: 1px solid rgba(139, 92, 246, 0.4);
+        .header-title { 
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899) !important;
+            -webkit-background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
         }
-
-        .metric-container {
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 20px;
-            padding: 2rem;
-            text-align: center;
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            transition: all 0.3s ease;
-            height: 100%;
+        .header-subtitle, .upload-text, .metric-label { color: #475569 !important; }
+        .metric-value { 
+            background: linear-gradient(90deg, #10b981, #34d399) !important;
+            -webkit-background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
         }
-
-        .metric-container:hover {
-            background: rgba(255, 255, 255, 0.22);
-            transform: translateY(-5px) scale(1.03);
-        }
-
-        .metric-label {
-            color: #cbd5e1;
-            font-size: 1.15rem;
-            font-weight: 600;
-            margin-bottom: 0.8rem;
-            letter-spacing: 0.5px;
-        }
-
-        .metric-value {
-            font-size: 3rem;
-            font-weight: 800;
-            background: linear-gradient(90deg, #10b981, #34d399);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
         .metric-value.red {
-            background: linear-gradient(90deg, #ef4444, #f87171);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            background: linear-gradient(90deg, #ef4444, #f87171) !important;
+            -webkit-background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
         }
+    }
 
-        /* Buttons */
-        .stButton > button {
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
-            color: white !important;
-            border: none;
-            border-radius: 16px;
-            padding: 1rem 2.5rem;
-            font-weight: 700;
-            font-size: 1.2rem;
-            box-shadow: 0 10px 25px rgba(99, 102, 241, 0.4);
-            transition: all 0.3s ease;
-            width: 100%;
-            height: 70px;
-            margin: 1rem 0;
-        }
+    .block-container {
+        padding-top: 2rem;
+        max-width: 1000px;
+        margin: 0 auto;
+    }
 
-        .stButton > button:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 15px 35px rgba(99, 102, 241, 0.6);
-            background: linear-gradient(135deg, #7c3aed, #a855f7);
-        }
+    .header-title {
+        font-size: 4.8rem;
+        font-weight: 900;
+        background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-align: center;
+        margin: 2rem 0 0.5rem;
+        letter-spacing: -3px;
+        line-height: 1;
+    }
 
-        /* File Uploaders */
-        .stFileUploader > div > div {
-            background: rgba(255, 255, 255, 0.1);
-            border: 2px dashed rgba(255, 255, 255, 0.35);
-            border-radius: 20px;
-            padding: 2.5rem;
-            text-align: center;
-            transition: all 0.4s;
-        }
+    .header-subtitle {
+        font-size: 1.6rem;
+        color: #94a3b8;
+        text-align: center;
+        font-weight: 500;
+        margin-bottom: 3rem;
+        opacity: 0.9;
+    }
 
-        .stFileUploader > div > div:hover {
-            border-color: #a78bfa;
-            background: rgba(167, 139, 250, 0.15);
-            transform: scale(1.02);
-        }
+    .glass-card {
+        background: rgba(255, 255, 255, 0.12);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-radius: 24px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 2.5rem;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+        transition: all 0.4s ease;
+        margin: 2rem auto;
+        max-width: 900px;
+    }
 
-        .upload-text {
-            color: #e2e8f0;
-            font-size: 1.15rem;
-            font-weight: 500;
-            margin-top: 0.5rem;
-        }
+    .glass-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(139, 92, 246, 0.4);
+    }
 
-        /* Tabs */
-        .stTabs [data-baseweb="tab-list"] {
-            justify-content: center;
-            gap: 1.5rem;
-            padding: 0 1rem;
-        }
+    .metric-container {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 20px;
+        padding: 2rem;
+        text-align: center;
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        transition: all 0.3s ease;
+        height: 100%;
+    }
 
-        .stTabs [data-baseweb="tab"] {
-            font-size: 1.2rem;
-            font-weight: 600;
-            padding: 1rem 2rem;
-            border-radius: 16px;
-            background: rgba(255, 255, 255, 0.1);
-            transition: all 0.3s;
-        }
+    .metric-container:hover {
+        background: rgba(255, 255, 255, 0.22);
+        transform: translateY(-5px) scale(1.03);
+    }
 
-        .stTabs [aria-selected="true"] {
-            background: linear-gradient(135deg, #8b5cf6, #ec4899);
-            color: white;
-        }
+    .metric-label {
+        color: #cbd5e1;
+        font-size: 1.15rem;
+        font-weight: 600;
+        margin-bottom: 0.8rem;
+        letter-spacing: 0.5px;
+    }
 
-        /* Download Link */
-        .download-link {
-            display: inline-block;
-            background: linear-gradient(135deg, #10b981, #34d399);
-            color: white;
-            padding: 1.2rem 3rem;
-            border-radius: 16px;
-            text-decoration: none;
-            font-weight: 700;
-            font-size: 1.3rem;
-            box-shadow: 0 12px 30px rgba(16, 185, 129, 0.4);
-            transition: all 0.3s;
-            text-align: center;
-        }
+    .metric-value {
+        font-size: 3rem;
+        font-weight: 800;
+        background: linear-gradient(90deg, #10b981, #34d399);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
 
-        .download-link:hover {
-            transform: translateY(-6px);
-            box-shadow: 0 20px 40px rgba(16, 185, 129, 0.6);
-        }
+    .metric-value.red {
+        background: linear-gradient(90deg, #ef4444, #f87171);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
 
-        /* Center everything */
-        .center { text-align: center; }
-        .full-center { 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            flex-direction: column;
-            width: 100%;
-        }
+    /* Buttons */
+    .stButton > button {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 16px !important;
+        padding: 1rem 2.5rem !important;
+        font-weight: 700 !important;
+        font-size: 1.2rem !important;
+        box-shadow: 0 10px 25px rgba(99, 102, 241, 0.4) !important;
+        transition: all 0.3s ease !important;
+        width: 100% !important;
+        height: 70px !important;
+        margin: 1rem 0 !important;
+    }
 
-        .footer {
-            text-align: center;
-            color: #64748b;
-            font-size: 1rem;
-            margin-top: 5rem;
-            padding: 2rem;
-            opacity: 0.8;
-        }
+    .stButton > button:hover {
+        transform: translateY(-4px) !important;
+        box-shadow: 0 15px 35px rgba(99, 102, 241, 0.6) !important;
+        background: linear-gradient(135deg, #7c3aed, #a855f7) !important;
+    }
 
-        h3, h4 { text-align: center; color: #e2e8f0; }
-        </style>
-    """, unsafe_allow_html=True)
+    /* File Uploaders */
+    .stFileUploader > div > div {
+        background: rgba(255, 255, 255, 0.1);
+        border: 2px dashed rgba(255, 255, 255, 0.35);
+        border-radius: 20px;
+        padding: 2.5rem;
+        text-align: center;
+        transition: all 0.4s;
+    }
 
-def run():
-    set_professional_ui()
+    .stFileUploader > div > div:hover {
+        border-color: #a78bfa;
+        background: rgba(167, 139, 250, 0.15);
+        transform: scale(1.02);
+    }
 
+    .upload-text {
+        color: #e2e8f0;
+        font-size: 1.15rem;
+        font-weight: 500;
+        margin-top: 0.5rem;
+    }
+
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        justify-content: center;
+        gap: 1.5rem;
+        padding: 0 1rem;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        font-size: 1.2rem;
+        font-weight: 600;
+        padding: 1rem 2rem;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.1);
+        transition: all 0.3s;
+    }
+
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, #8b5cf6, #ec4899);
+        color: white;
+    }
+
+    /* Download Link */
+    .download-link {
+        display: inline-block;
+        background: linear-gradient(135deg, #10b981, #34d399);
+        color: white;
+        padding: 1.2rem 3rem;
+        border-radius: 16px;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 1.3rem;
+        box-shadow: 0 12px 30px rgba(16, 185, 129, 0.4);
+        transition: all 0.3s;
+        text-align: center;
+    }
+
+    .download-link:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 20px 40px rgba(16, 185, 129, 0.6);
+    }
+
+    .full-center { 
+        display: flex; 
+        justify-content: center; 
+        align-items: center; 
+        flex-direction: column;
+        width: 100%;
+        text-align: center;
+    }
+
+    .footer {
+        text-align: center;
+        color: #64748b;
+        font-size: 1rem;
+        margin-top: 5rem;
+        padding: 2rem;
+        opacity: 0.8;
+    }
+
+    h3, h4 { text-align: center; color: #e2e8f0; }
+    </style>
+""", unsafe_allow_html=True)
+
+# ====================== MAIN APP ======================
+def main():
     # Centered Header
     st.markdown('<div class="full-center">', unsafe_allow_html=True)
-    st.markdown('<h1 class="header-title">Algo 19 Pro</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="header-title">AlphaTrade Pro</h1>', unsafe_allow_html=True)
     st.markdown('<p class="header-subtitle">Institutional-Grade Multi-User PNL & Portfolio Exit Intelligence</p>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -1044,13 +1046,16 @@ def run():
     # Footer
     st.markdown("""
         <div class='footer'>
-            <p>Algo 19 Pro
-     © 2025 | Institutional Trading Intelligence Platform</p>
+            <p>AlphaTrade Pro © 2025 | Institutional Trading Intelligence Platform</p>
             <p>Powered by Precision • Trusted by Elite Traders</p>
         </div>
     """, unsafe_allow_html=True)
 
-# ====================== PNL PROCESSING (UNCHANGED) ======================
+# ====================== ALL FUNCTIONS (UNCHANGED LOGIC) ======================
+# [Keep all your functions exactly as before: process_pnl_multi_user, display_pnl_results, etc.]
+# ... [PASTE ALL YOUR FUNCTIONS HERE - SAME AS BEFORE] ...
+
+# ====================== PNL PROCESSING ======================
 def process_pnl_multi_user(pos_file, nfo_bhav_file, bfo_bhav_file, expiry_nfo, expiry_bfo, inc_nfo, inc_bfo):
     df = pd.read_csv(pos_file)
     if 'UserID' not in df.columns:
@@ -1151,7 +1156,6 @@ def process_pnl_multi_user(pos_file, nfo_bhav_file, bfo_bhav_file, expiry_nfo, e
         "grand_total": summary_df["Total PNL"].sum()
     }
 
-# ====================== DISPLAY RESULTS (CENTERED) ======================
 def display_pnl_results(results):
     st.success("Processing Complete – All Users Analyzed!")
 
@@ -1174,124 +1178,4 @@ def display_pnl_results(results):
         st.markdown(f"""
             <div class="metric-container">
                 <div class="metric-label">Grand Total</div>
-                <div class="metric-value {'red' if results["grand_total"] < 0 else ''}">₹{results["grand_total"]:,.2f}</div>
-            </div>
-        """, unsafe_allow_html=True)
-
-    st.markdown("### Per-User PNL Breakdown")
-    st.dataframe(
-        results["summary"].style.format({
-            "Realized PNL": "₹{:,.2f}",
-            "Settlement PNL": "₹{:,.2f}",
-            "Total PNL": "₹{:,.2f}"
-        }).bar(subset=["Total PNL"], color='#8b5cf6'),
-        use_container_width=True
-    )
-
-    st.markdown("<div class='full-center'>", unsafe_allow_html=True)
-    st.markdown(get_multi_user_excel(results["detailed"], results["summary"], "Multi_User_PNL"), unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
-
-# ====================== EXCEL & CSV EXPORT ======================
-def get_multi_user_excel(detailed, summary, filename):
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        summary.to_excel(writer, sheet_name="SUMMARY", index=False)
-        for user, data in detailed.items():
-            combined = pd.concat([data["nfo"], data["bfo"]], ignore_index=True)
-            export_cols = ['UserID', 'Symbol', 'Net Qty', 'Realized Profit', 'Calc_Realized', 'Unrealized Profit']
-            if 'Calc_Settlement' in combined.columns:
-                export_cols.append('Calc_Settlement')
-            combined = combined[export_cols]
-            safe_name = str(user)[:31]
-            combined.to_excel(writer, sheet_name=safe_name, index=False)
-
-        for ws_name, ws in writer.sheets.items():
-            for cell in ws[1]:
-                cell.font = Font(bold=True, color="FFFFFF")
-                cell.fill = openpyxl.styles.PatternFill(start_color="1e40af", fill_type="solid")
-            for row in ws.iter_rows():
-                for cell in row:
-                    cell.alignment = Alignment(horizontal='center')
-                    cell.border = Border(left=Side('thin'), right=Side('thin'), top=Side('thin'), bottom=Side('thin'))
-
-    b64 = base64.b64encode(output.getvalue()).decode()
-    return f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}" download="{filename}.xlsx" class="download-link">Download Full Excel Report</a>'
-
-def get_csv_download_link(df, filename):
-    csv = df.to_csv(index=False)
-    b64 = base64.b64encode(csv.encode()).decode()
-    return f'<a href="data:text/csv;base64,{b64}" download="{filename}.csv" class="download-link">Download {filename}.csv</a>'
-
-# ====================== PORTFOLIO ANALYSIS (UNCHANGED) ======================
-def process_portfolio_data(gridlog_file, summary_file):
-    if gridlog_file.name.endswith('.csv'):
-        df_grid = pd.read_csv(gridlog_file)
-    else:
-        df_grid = pd.read_excel(gridlog_file)
-
-    df_grid.columns = df_grid.columns.str.strip()
-    mask = df_grid['Message'].str.contains(r'Combined SL:|Combined trail target:', case=False, na=False)
-    filtered = df_grid.loc[mask, ['Message', 'Option Portfolio', 'Timestamp']].dropna(subset=['Option Portfolio'])
-
-    summary_grid = (
-        filtered.groupby('Option Portfolio')
-        .agg({'Message': lambda x: ', '.join(x.unique()), 'Timestamp': 'max'})
-        .reset_index()
-        .rename(columns={'Message': 'Reason', 'Timestamp': 'Time'})
-    )
-
-    xl = pd.ExcelFile(summary_file)
-    onsqoff_list = []
-    for sheet in xl.sheet_names:
-        if "legs" in sheet.lower():
-            df_leg = xl.parse(sheet)
-            df_leg.columns = df_leg.columns.str.strip()
-            if {'Exit Type', 'Portfolio Name', 'Exit Time'}.issubset(df_leg.columns):
-                onsqoff = df_leg[df_leg['Exit Type'].astype(str).str.strip() == 'OnSqOffTime']
-                if not onsqoff.empty:
-                    grouped = onsqoff.groupby('Portfolio Name')['Exit Time'].max().reset_index()
-                    for _, row in grouped.iterrows():
-                        onsqoff_list.append({
-                            'Option Portfolio': row['Portfolio Name'],
-                            'Reason': 'OnSqOffTime',
-                            'Time': row['Exit Time']
-                        })
-
-    summary_summary = pd.DataFrame(onsqoff_list)
-    final_df = pd.concat([summary_grid, summary_summary], ignore_index=True)
-    final_df = final_df.groupby('Option Portfolio').agg({
-        'Reason': lambda x: ', '.join(sorted(set(x))),
-        'Time': 'last'
-    }).reset_index()
-
-    completed = []
-    grid_ports = df_grid['Option Portfolio'].dropna().unique()
-    for sheet in xl.sheet_names:
-        if "legs" in sheet.lower():
-            df_leg = xl.parse(sheet)
-            df_leg.columns = df_leg.columns.str.strip()
-            if 'Portfolio Name' in df_leg.columns and 'Status' in df_leg.columns:
-                for port, group in df_leg.groupby('Portfolio Name'):
-                    if port not in final_df['Option Portfolio'].values and port in grid_ports:
-                        if (group['Status'].astype(str).str.strip() == 'completed').all():
-                            reason = 'AllLegsCompleted'
-                            time = group['Exit Time'].dropna().iloc[-1] if 'Exit Time' in group.columns and not group['Exit Time'].dropna().empty else None
-                            completed.append({'Option Portfolio': port, 'Reason': reason, 'Time': time})
-
-    if completed:
-        final_df = pd.concat([final_df, pd.DataFrame(completed)], ignore_index=True)
-
-    def clean(r):
-        if pd.isna(r): return r
-        m = re.search(r'(Combined SL: [^ ]+ hit|Combined Trail Target: [^ ]+ hit)', r, re.I)
-        if m: return m.group(1)
-        return r.replace('AllLegsCompleted,', '').replace('AllLegsCompleted', '').strip()
-
-    final_df['Reason'] = final_df['Reason'].apply(clean)
-    final_df['Time'] = final_df['Time'].astype(str).str.strip().replace('nan', None)
-    return final_df
-
-if __name__ == "__main__":
-    run()
-
+                <div class="metric-value {'red' if results["grand_total"] < 0
