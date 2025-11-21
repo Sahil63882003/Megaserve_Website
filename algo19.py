@@ -2535,14 +2535,14 @@ def run():
     # ===================== TABS =====================
     tab1, tab2 = st.tabs(["Full PNL Calculation", "Portfolio Exit Analysis"])
 
-    # ===================== TAB 1: PNL CALCULATION =====================
+   # ===================== TAB 1: PNL CALCULATION =====================
     with tab1:
         st.markdown('<h1 class="header-text">Ultimate Financial PNL Dashboard</h1>', unsafe_allow_html=True)
         st.markdown('<p class="subheader-text">Analyze your portfolio with real-time insights, interactive charts, and comprehensive data exports for smarter trading decisions.</p>', unsafe_allow_html=True)
-        
+       
         st.markdown('<h2 class="text-lg font-bold text-gray-800 dark:text-gray-200 mb-4">Upload Data</h2>', unsafe_allow_html=True)
         with st.container():
-            positions_file = st.file_uploader("Positions CSV", type="csv", help="Upload VS20 22 AUG 2025 POSITIONS(EOD).csv", key="positions_upload")
+            positions_file = st.file_uploader("Positions CSV", type="csv", help="Upload VS20 22 AUG 2025 POSITIONS(EOD).csv", key=("positions_upload"))
             selected_user = None
             if positions_file:
                 if 'positions_df' not in st.session_state or st.session_state.get('positions_file_name') != positions_file.name:
@@ -2554,13 +2554,13 @@ def run():
                     selected_user = st.selectbox("Select User", users, key="selected_user")
                 else:
                     st.error("'UserID' column not found in positions file.")
-            
+           
             checkbox_col1, checkbox_col2 = st.columns(2)
             with checkbox_col1:
                 include_settlement_nfo = st.checkbox("Include Settlement PNL for NFO", value=True, key="nfo_settlement")
             with checkbox_col2:
                 include_settlement_bfo = st.checkbox("Include Settlement PNL for BFO", value=True, key="bfo_settlement")
-            
+           
             col1, col2 = st.columns(2)
             with col1:
                 nfo_bhav_file = st.file_uploader("NFO Bhavcopy", type="csv", key="nfo_upload") if include_settlement_nfo else None
@@ -2570,31 +2570,119 @@ def run():
                 bfo_bhav_file = st.file_uploader("BFO Bhavcopy", type="csv", key="bfo_upload") if include_settlement_bfo else None
                 if not include_settlement_bfo:
                     st.info("BFO Bhavcopy not required when settlement PNL for BFO is disabled.")
-            
+           
             st.markdown('<h2 class="text-lg font-bold text-gray-800 dark:text-gray-200 mb-4">Expiry Dates</h2>', unsafe_allow_html=True)
             col3, col4 = st.columns(2)
             with col3:
                 expiry_nfo = st.date_input("NFO Expiry Date", value=datetime.now().date(), key="nfo_expiry", disabled=not include_settlement_nfo)
             with col4:
                 expiry_bfo = st.date_input("BFO Expiry Date", value=datetime.now().date(), key="bfo_expiry", disabled=not include_settlement_bfo)
-            
+           
             process_button = st.button("Process Data", key="process_button")
+
             if process_button:
                 if positions_file and selected_user:
                     if (include_settlement_nfo and not nfo_bhav_file) or (include_settlement_bfo and not bfo_bhav_file):
                         st.error("Please upload all required files.")
                     else:
                         try:
-                            with st.spinner("Processing..."):
+                            with st.spinner("Processing PNL..."):
                                 filtered_df = st.session_state.positions_df[st.session_state.positions_df['UserID'] == selected_user]
-                                results = process_data(filtered_df, nfo_bhav_file, bfo_bhav_file, expiry_nfo, expiry_bfo, include_settlement_nfo, include_settlement_bfo)
-                            # ... [rest of your metric cards and download — unchanged]
-                            # (All your existing display code goes here exactly as you wrote it)
-                            st.success("PNL processed!")
+                                results = process_data(
+                                    filtered_df, nfo_bhav_file, bfo_bhav_file,
+                                    expiry_nfo, expiry_bfo,
+                                    include_settlement_nfo, include_settlement_bfo
+                                )
+
+                            st.success("PNL processed successfully!")
+
+                            # ==================== DISPLAY RESULTS WITH METRIC CARDS ====================
+                            col1, col2, col3, col4 = st.columns(4)
+                            with col1:
+                                st.markdown(f"""
+                                <div class="metric-card">
+                                    <div class="metric-label">NFO Realized PNL</div>
+                                    <div class="metric-value" style="color: {'#10b981' if results['total_realized_nfo'] >= 0 else '#ef4444'}">
+                                        ₹{results['total_realized_nfo']:,.2f}
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                            with col2:
+                                st.markdown(f"""
+                                <div class="metric-card">
+                                    <div class="metric-label">NFO Settlement PNL</div>
+                                    <div class="metric-value" style="color: {'#10b981' if results['total_settlement_nfo'] >= 0 else '#ef4444'}">
+                                        ₹{results['total_settlement_nfo']:,.2f}
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                            with col3:
+                                st.markdown(f"""
+                                <div class="metric-card">
+                                    <div class="metric-label">BFO Realized PNL</div>
+                                    <div class="metric-value" style="color: {'#10b981' if results['total_realized_bfo'] >= 0 else '#ef4444'}">
+                                        ₹{results['total_realized_bfo']:,.2f}
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                            with col4:
+                                st.markdown(f"""
+                                <div class="metric-card">
+                                    <div class="metric-label">BFO Settlement PNL</div>
+                                    <div class="metric-value" style="color: {'#10b981' if results['total_settlement_bfo'] >= 0 else '#ef4444'}">
+                                        ₹{results['total_settlement_bfo']:,.2f}
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+
+                            # Overall Summary
+                            st.markdown("### Overall Summary")
+                            colA, colB, colC = st.columns(3)
+                            with colA:
+                                st.markdown(f"""
+                                <div class="metric-card">
+                                    <div class="metric-label">Total Realized PNL</div>
+                                    <div class="metric-value" style="color: {'#10b981' if results['overall_realized'] >= 0 else '#ef4444'}; font-size: 2rem;">
+                                        ₹{results['overall_realized']:,.2f}
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                            with colB:
+                                st.markdown(f"""
+                                <div class="metric-card">
+                                    <div class="metric-label">Total Settlement PNL</div>
+                                    <div class="metric-value" style="color: {'#10b981' if results['overall_settlement'] >= 0 else '#ef4444'}; font-size: 2rem;">
+                                        ₹{results['overall_settlement']:,.2f}
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                            with colC:
+                                st.markdown(f"""
+                                <div class="metric-card">
+                                    <div class="metric-label">Grand Total PNL</div>
+                                    <div class="metric-value" style="color: {'#10b981' if results['grand_total'] >= 0 else '#ef4444'}; font-size: 2.5rem;">
+                                        ₹{results['grand_total']:,.2f}
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+
+                            # ==================== DOWNLOAD FILTERED DATA ====================
+                            st.markdown("### Download Processed Positions Data")
+                            download_df = filtered_df.copy()
+                            csv_link = get_csv_download_link(download_df, f"PNL_{selected_user}_{datetime.now().strftime('%Y%m%d')}.csv")
+                            excel_link = get_excel_download_link(download_df, f"PNL_{selected_user}_{datetime.now().strftime('%Y%m%d')}")
+
+                            col_d1, col_d2 = st.columns(2)
+                            with col_d1:
+                                st.markdown(csv_link, unsafe_allow_html=True)
+                            with col_d2:
+                                st.markdown(excel_link, unsafe_allow_html=True)
+
                         except Exception as e:
-                            st.error(f"Error: {e}")
+                            st.error(f"Error during processing: {e}")
+                            logger.error(f"Processing error: {e}", exc_info=True)
                 else:
-                    st.error("Upload positions and select user.")
+                    st.error("Please upload positions file and select a user.")
 
     # ===================== TAB 2: PORTFOLIO ANALYSIS =====================
     with tab2:
@@ -2627,3 +2715,4 @@ def run():
 if __name__ == "__main__":
     st.write(f"DEBUG: Starting app at {datetime.now()}")
     run()
+
